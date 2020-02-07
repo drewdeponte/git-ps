@@ -1,7 +1,7 @@
 import XCTest
 import class Foundation.Bundle
 
-final class git_ps_swiftTests: XCTestCase {
+final class git_psTests: XCTestCase {
     func testExample() throws {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct
@@ -12,7 +12,7 @@ final class git_ps_swiftTests: XCTestCase {
             return
         }
 
-        let fooBinary = productsDirectory.appendingPathComponent("git-ps-swift")
+        let fooBinary = productsDirectory.appendingPathComponent("git-ps")
 
         let process = Process()
         process.executableURL = fooBinary
