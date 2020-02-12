@@ -3,15 +3,23 @@ import Foundation
 public final class GitPatchStack {
 		private let arguments: [String]
 
-		public init(arguments: [String] = CommandLine.arguments) { 
+        private let remote: String
+        private let baseBranch: String
+        private var remoteBase: String {
+            return "\(self.remote)/\(self.baseBranch)"
+        }
+
+		public init(arguments: [String] = CommandLine.arguments, remote: String = "origin", baseBranch: String = "master") { 
 				self.arguments = arguments
+            self.remote = remote
+            self.baseBranch = baseBranch
 		}
 
 		public func run() throws {
             print("Hello world")
 
             let git = try! GitShell(bash: Bash())
-            let patches = try! git.patchStack()
+            let patches = try! git.commits(from: self.remoteBase, to: self.baseBranch)
             patches.forEach { (patch) in
                 print(patch)
             }
