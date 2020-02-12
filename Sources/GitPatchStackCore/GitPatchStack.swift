@@ -88,6 +88,36 @@ public final class GitPatchStack {
 
     private func requestReview() {
         print("request review")
+
+        // get the sha of the commit to request review for
+
+        // validate sha exists
+
+        // validate no uncommitted changes
+
+        // get currently checked out branch name
+
+        // fetch upstream (ex: origin/master)
+
+        // FUTURE: generate new patch stack request review branch name (maybe use first X characters of summary and some sort of slug algo)
+
+        // create the new request review branch on remote base
+
+        // checkout the new branch
+
+        // cherry pick selected commit sha into branch
+
+            // if fails to cherry pick
+
+            // cherry pick abort
+
+            // checkout original branch
+
+            // exit with error
+
+        // push branch up to remote
+
+        // checkout original branch
     }
 
     private func rebase() throws {
@@ -96,6 +126,10 @@ public final class GitPatchStack {
 
     private func publish() {
         print("publish")
+
+        // get the sha of the commit to publish upstream
+
+
     }
 
     private func pull() throws {
@@ -105,5 +139,9 @@ public final class GitPatchStack {
 
     private func show() {
         print("show")
+
+        // get the sha of the commit to show
+
+        // show the commit
     }
 }
