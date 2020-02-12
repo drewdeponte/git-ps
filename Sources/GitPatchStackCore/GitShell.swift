@@ -54,10 +54,7 @@ public class GitShell {
 
     public func rebase(onto: String, from: String, to: String, interactive: Bool = false) throws {
         if interactive {
-            let result = try run(self.path, arguments: ["rebase", "-i", "--onto", onto, from, to])
-            guard result.isSuccessful else {
-                throw Error.gitRebaseFailure
-            }
+            replaceProcess(self.path, command: "git", arguments: ["rebase", "-i", "--onto", onto, from, to])
         } else {
             let result = try run(self.path, arguments: ["rebase", "--onto", onto, from, to])
             guard result.isSuccessful else {

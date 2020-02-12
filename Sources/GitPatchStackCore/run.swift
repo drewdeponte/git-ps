@@ -19,3 +19,14 @@ public func run(_ fileURLWithPath: String, arguments: [String]) throws -> RunRes
     let result = RunResult(standardOutput: String(data: outputData, encoding: .utf8), standardError: String(data: errorData, encoding: .utf8), terminationStatus: task.terminationStatus)
     return result
 }
+
+public func replaceProcess(_ path: String, command: String, arguments: [String]) {
+    let args = [command] + arguments
+
+    // Array of UnsafeMutablePointer<Int8>
+    let cargs = args.map { strdup($0) } + [nil]
+
+    execv(path, cargs)
+
+    fatalError("Failed to execv")
+}
