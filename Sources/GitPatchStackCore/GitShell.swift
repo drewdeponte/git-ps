@@ -7,13 +7,15 @@ public struct CommitSummary {
 
 extension CommitSummary: CustomStringConvertible {
     public var description: String {
-        return "\(self.sha) \(self.summary)"
+        return "\(self.sha.prefix(6)) \(self.summary)"
     }
 }
 
 public class GitShell {
     public enum Error: Swift.Error {
         case gitLogFailure
+        case gitFetchFailure
+        case gitRebaseFailure
     }
 
     private let path: String
@@ -27,7 +29,7 @@ public class GitShell {
     }
 
     public func commits(from fromRef: String, to toRef: String) throws -> [CommitSummary] {
-        let result = try run(self.path, arguments: ["log", "--pretty=%C(auto)%H %s", "\(fromRef)..\(toRef)"])
+        let result = try run(self.path, arguments: ["log", "--pretty=%H %s", "\(fromRef)..\(toRef)"])
         guard result.isSuccessful else { throw Error.gitLogFailure }
 
         if let output = result.standardOutput {
@@ -41,5 +43,26 @@ public class GitShell {
             }
         }
         return []
+    }
+
+    public func fetch(remote: String, branch: String) throws {
+        let result = try run(self.path, arguments: ["fetch", "--quiet", remote, branch])
+        guard result.isSuccessful else {
+            throw Error.gitFetchFailure
+        }
+    }
+
+    public func rebase(onto: String, from: String, to: String, interactive: Bool = false) throws {
+        if interactive {
+            let result = try run(self.path, arguments: ["rebase", "-i", "--onto", onto, from, to])
+            guard result.isSuccessful else {
+                throw Error.gitRebaseFailure
+            }
+        } else {
+            let result = try run(self.path, arguments: ["rebase", "--onto", onto, from, to])
+            guard result.isSuccessful else {
+                throw Error.gitRebaseFailure
+            }
+        }
     }
 }

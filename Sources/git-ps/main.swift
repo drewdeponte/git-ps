@@ -1,6 +1,6 @@
 import GitPatchStackCore
 
-let gitPatchStack = GitPatchStack()
+let gitPatchStack = try! GitPatchStack()
 
 do {
     try gitPatchStack.run()
