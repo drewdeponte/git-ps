@@ -79,10 +79,15 @@ public final class GitPatchStack {
 //            print(error)
     }
 
-    private func list() throws {
+    private func patchStack() throws -> [CommitSummary] {
         let patches = try git.commits(from: self.remoteBase, to: self.baseBranch)
-        patches.forEach { (patch) in
-            print(patch)
+        return patches.reversed() // reverse so indexing is 0 closest to origin, u
+    }
+
+    private func list() throws {
+        let patches = try self.patchStack()
+        patches.enumerated().reversed().forEach { (offset: Int, commitSummary: CommitSummary) in
+            print("\(offset) \(String(describing: commitSummary))")
         }
     }
 
