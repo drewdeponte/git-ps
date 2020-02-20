@@ -137,7 +137,14 @@ public final class GitPatchStack {
 
         let originalBranch = try self.git.getCheckedOutBranch()
 
-        try self.addIdTo(patch: patch)
+        if let uuid = try self.getId(patch: patch) {
+            print("DREW: got uuid: \(uuid.uuidString)")
+            // already have id on commit, just need to request review
+        } else {
+            // add id to commit
+            print("DREW: would add id to it")
+            //        try self.addIdTo(uuid: UUID(), patch: patch)
+        }
 
         // Do this so that we are always creating PR branches on top of the latest remote baseBranch
 //        try self.git.fetch(remote: self.remote, branch: self.baseBranch)
@@ -180,13 +187,12 @@ public final class GitPatchStack {
         return patches[index]
     }
 
-    private func addIdTo(patch: CommitSummary) throws -> CommitSummary {
+    private func addIdTo(uuid: UUID, patch: CommitSummary) throws -> CommitSummary {
         let originalBranch = try self.git.getCheckedOutBranch()
         try self.git.createAndCheckout(branch: "ps/tmp/add_id_rework", startingFrom: self.remoteBase)
         try self.git.cherryPickCommits(from: self.remoteBase, to: patch.sha)
         let shaOfPatchPrime = try self.git.getShaOf(ref: "HEAD")
         let originalMessage = try self.git.commitMessageOf(ref: shaOfPatchPrime)
-        let uuid = UUID()
         try self.git.commitAmendMessages(messages: [originalMessage, "ps-id: \(uuid.uuidString)"])
         let shaOfPatchFinalPrime = try self.git.getShaOf(ref: "HEAD")
         try self.git.cherryPickCommits(from: patch.sha, to: self.baseBranch)
@@ -194,5 +200,21 @@ public final class GitPatchStack {
         try self.git.checkout(ref: originalBranch)
         try self.git.deleteBranch(named: "ps/tmp/add_id_rework")
         return try self.git.commitSummary(shaOfPatchFinalPrime)
+    }
+
+    private func getId(patch: CommitSummary) throws -> UUID? {
+        let message = try self.git.commitMessageOf(ref: patch.sha)
+        let pattern = #"ps-id:\s(?<patchStackId>[\w\d-]+)"#
+        let regex = try NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        if let match = regex.firstMatch(in: message, options: [], range: NSRange(location: 0, length: message.utf8.count)) {
+            if let patchStackIdRange = Range(match.range(withName: "patchStackId"), in: message) {
+                let patchStackIdStr = String(message[patchStackIdRange])
+                return UUID(uuidString: patchStackIdStr)
+            } else { // matched ps-id but failed to get the range of the capture group
+                return nil
+            }
+        } else { // didn't find match
+            return nil
+        }
     }
 }
