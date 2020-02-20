@@ -32,14 +32,6 @@ public final class GitPatchStack {
         switch subcommand {
         case "ls":
             try self.list()
-        case "rr":
-            self.requestReview()
-        case "rebase":
-            try self.rebase()
-        case "pub":
-            self.publish()
-        case "pull":
-            try self.pull()
         case "show":
             guard self.arguments.count == 3 else {
                 throw Error.invalidArgumentCount
@@ -51,6 +43,14 @@ public final class GitPatchStack {
                 print("Usage: git-ps show <patch-index>")
                 print("Note: Run 'git-ps ls' to see the current patches an their index values")
             }
+        case "pull":
+            try self.pull()
+        case "rebase":
+            try self.rebase()
+        case "rr":
+            self.requestReview()
+        case "pub":
+            self.publish()
         default:
             print("default")
         }
@@ -88,25 +88,32 @@ public final class GitPatchStack {
 //            print(error)
     }
 
-    private func patchStack() throws -> [CommitSummary] {
-        let patches = try git.commits(from: self.remoteBase, to: self.baseBranch)
-        return patches.reversed() // reverse so indexing is 0 closest to origin, u
-    }
-
-    private func getPatch(index: Int) throws -> CommitSummary? {
-        let patches = try self.patchStack()
-        guard (index >= 0) && (index < patches.count) else { return nil }
-        return patches[index]
-    }
-
-    private func list() throws {
+    public func list() throws {
         let patches = try self.patchStack()
         patches.enumerated().reversed().forEach { (offset: Int, commitSummary: CommitSummary) in
             print("\(offset) \(String(describing: commitSummary))")
         }
     }
 
-    private func requestReview() {
+    public func show(patchIndex: Int) throws {
+        guard let patch = try self.getPatch(index: patchIndex) else {
+            print("Error: there is no patch with an index of \(patchIndex)")
+            return
+        }
+
+        self.git.show(commit: patch.sha)
+    }
+
+    public func pull() throws {
+        try self.git.fetch(remote: self.remote, branch: self.baseBranch)
+        try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch)
+    }
+
+    public func rebase() throws {
+        try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch, interactive: true)
+    }
+
+    public func requestReview() {
         print("request review")
 
         // get the sha of the commit to request review for
@@ -140,29 +147,20 @@ public final class GitPatchStack {
         // checkout original branch
     }
 
-    private func rebase() throws {
-        try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch, interactive: true)
-    }
-
-    private func publish() {
+    public func publish() {
         print("publish")
 
         // get the sha of the commit to publish upstream
-
-
     }
 
-    private func pull() throws {
-        try self.git.fetch(remote: self.remote, branch: self.baseBranch)
-        try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch)
+    private func patchStack() throws -> [CommitSummary] {
+        let patches = try git.commits(from: self.remoteBase, to: self.baseBranch)
+        return patches.reversed() // reverse so indexing is 0 closest to origin, u
     }
 
-    private func show(patchIndex: Int) throws {
-        guard let patch = try self.getPatch(index: patchIndex) else {
-            print("Error: there is no patch with an index of \(patchIndex)")
-            return
-        }
-
-        self.git.show(commit: patch.sha)
+    private func getPatch(index: Int) throws -> CommitSummary? {
+        let patches = try self.patchStack()
+        guard (index >= 0) && (index < patches.count) else { return nil }
+        return patches[index]
     }
 }
