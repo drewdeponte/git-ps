@@ -48,8 +48,18 @@ public final class GitPatchStack {
         case "rebase":
             try self.rebase()
         case "rr":
-            self.requestReview()
+            guard self.arguments.count == 3 else {
+                throw Error.invalidArgumentCount
+            }
+
+            if let index = Int(self.arguments[2]) {
+                try self.requestReview(patchIndex: index)
+            } else {
+                print("Usage: git-ps rr <patch-index>")
+                print("Note: Run 'git-ps ls' to see the current patches an their index values")
+            }
         case "pub":
+            // TODO:
             self.publish()
         default:
             print("default")
@@ -113,18 +123,22 @@ public final class GitPatchStack {
         try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch, interactive: true)
     }
 
-    public func requestReview() {
-        print("request review")
+    public func requestReview(patchIndex: Int) throws {
+        guard let patch = try self.getPatch(index: patchIndex) else {
+            print("Error: there is no patch with an index of \(patchIndex)")
+            return
+        }
 
-        // get the sha of the commit to request review for
+        guard try !self.git.uncommittedChangePresent() else {
+            print("Error: uncommited changes are present")
+            print("Please commit or stash any uncommitted changes before running this command.")
+            return
+        }
 
-        // validate sha exists
+        let originalBranch = try self.git.getCheckedOutBranch()
 
-        // validate no uncommitted changes
-
-        // get currently checked out branch name
-
-        // fetch upstream (ex: origin/master)
+        // Do this so that we are always creating PR branches on top of the latest remote baseBranch
+        try self.git.fetch(remote: self.remote, branch: self.baseBranch)
 
         // FUTURE: generate new patch stack request review branch name (maybe use first X characters of summary and some sort of slug algo)
 

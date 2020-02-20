@@ -16,6 +16,8 @@ public class GitShell {
         case gitLogFailure
         case gitFetchFailure
         case gitRebaseFailure
+        case gitUncommittedChangePresentFailure
+        case gitCheckedOutBranchFailure
     }
 
     private let path: String
@@ -65,5 +67,35 @@ public class GitShell {
                 throw Error.gitRebaseFailure
             }
         }
+    }
+
+    public func uncommittedChangePresent() throws -> Bool {
+        let result = try run(self.path, arguments: ["status", "--porcelain"])
+        guard result.isSuccessful else {
+            throw Error.gitUncommittedChangePresentFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitUncommittedChangePresentFailure
+        }
+
+        if output == "" {
+            return false
+        } else {
+            return true
+        }
+    }
+
+    public func getCheckedOutBranch() throws -> String {
+        let result = try run(self.path, arguments: ["rev-parse", "--abbrev-ref", "HEAD"])
+        guard result.isSuccessful else {
+            throw Error.gitCheckedOutBranchFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitCheckedOutBranchFailure
+        }
+
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
