@@ -180,19 +180,19 @@ public final class GitPatchStack {
         return patches[index]
     }
 
-    private func addIdTo(patch: CommitSummary) throws {
+    private func addIdTo(patch: CommitSummary) throws -> CommitSummary {
         let originalBranch = try self.git.getCheckedOutBranch()
         try self.git.createAndCheckout(branch: "ps/tmp/add_id_rework", startingFrom: self.remoteBase)
         try self.git.cherryPickCommits(from: self.remoteBase, to: patch.sha)
         let shaOfPatchPrime = try self.git.getShaOf(ref: "HEAD")
         let originalMessage = try self.git.commitMessageOf(ref: shaOfPatchPrime)
-        let uuid = UUID().uuidString
-        try self.git.commitAmendMessages(messages: [originalMessage, "ps-id: \(uuid)"])
+        let uuid = UUID()
+        try self.git.commitAmendMessages(messages: [originalMessage, "ps-id: \(uuid.uuidString)"])
         let shaOfPatchFinalPrime = try self.git.getShaOf(ref: "HEAD")
-        print("DREW: finalSha: \(shaOfPatchFinalPrime)")
         try self.git.cherryPickCommits(from: patch.sha, to: self.baseBranch)
         try self.git.forceBranch(named: self.baseBranch, to: "HEAD")
         try self.git.checkout(ref: originalBranch)
         try self.git.deleteBranch(named: "ps/tmp/add_id_rework")
+        return try self.git.commitSummary(shaOfPatchFinalPrime)
     }
 }

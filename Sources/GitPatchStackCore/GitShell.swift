@@ -27,6 +27,7 @@ public class GitShell {
         case gitForceBranchFailure
         case gitDeleteBranchFailure
         case gitCheckoutFailure
+        case gitCommitSummaryFailure
     }
 
     private let path: String
@@ -122,7 +123,6 @@ public class GitShell {
     }
 
     public func cherryPickCommits(from: String, to: String) throws {
-        print("DREW: cherry picking from \(from)..\(to)")
         let result = try run(self.path, arguments: ["cherry-pick", "\(from)..\(to)"])
         guard result.isSuccessful == true else {
             if let errOutput = result.standardOutput {
@@ -208,5 +208,12 @@ public class GitShell {
         guard result.isSuccessful == true else {
             throw Error.gitCheckoutFailure
         }
+    }
+
+    public func commitSummary(_ ref: String) throws -> CommitSummary {
+        guard let commit = try self.commits(from: "\(ref)^", to: ref).first else {
+            throw Error.gitCommitSummaryFailure
+        }
+        return commit
     }
 }
