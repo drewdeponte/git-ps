@@ -18,6 +18,15 @@ public class GitShell {
         case gitRebaseFailure
         case gitUncommittedChangePresentFailure
         case gitCheckedOutBranchFailure
+        case gitCreateAndCheckoutFailure
+        case gitCherryPickCommitsFailure
+        case gitShaOfFailure
+        case gitCommitMessageOfFailure
+        case gitCommitAmendMessages
+        case gitRevListFailure
+        case gitForceBranchFailure
+        case gitDeleteBranchFailure
+        case gitCheckoutFailure
     }
 
     private let path: String
@@ -97,5 +106,107 @@ public class GitShell {
         }
 
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func createAndCheckout(branch: String, startingFrom: String, tracking: Bool = false) throws {
+        var result: RunResult?
+        if tracking == true {
+            result = try run(self.path, arguments: ["checkout", "-B", branch, "--track", startingFrom])
+        } else {
+            result = try run(self.path, arguments: ["checkout", "-B", branch, "--no-track", startingFrom])
+        }
+
+        guard let res = result, res.isSuccessful == true else {
+            throw Error.gitCreateAndCheckoutFailure
+        }
+    }
+
+    public func cherryPickCommits(from: String, to: String) throws {
+        print("DREW: cherry picking from \(from)..\(to)")
+        let result = try run(self.path, arguments: ["cherry-pick", "\(from)..\(to)"])
+        guard result.isSuccessful == true else {
+            if let errOutput = result.standardOutput {
+                print(errOutput)
+            }
+            throw Error.gitCherryPickCommitsFailure
+        }
+    }
+
+    public func getShaOf(ref: String) throws -> String {
+        let result = try run(self.path, arguments: ["rev-list", "-n1", ref])
+        guard result.isSuccessful == true else {
+            throw Error.gitShaOfFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitShaOfFailure
+        }
+
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func commitMessageOf(ref: String) throws -> String {
+        let result = try run(self.path, arguments: ["rev-list", "--format=%B", "--max-count=1", ref])
+        guard result.isSuccessful == true else {
+            throw Error.gitCommitMessageOfFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitCommitMessageOfFailure
+        }
+
+        if let firstNewlineIndex = output.firstIndex(of: "\n") {
+            var out = output
+            out.removeSubrange(...firstNewlineIndex)
+            return out
+        } else {
+            throw Error.gitCommitMessageOfFailure
+        }
+    }
+
+    public func commitAmendMessages(messages: [String]) throws {
+        var args = ["commit", "--amend"]
+        for msg in messages {
+            args.append("-m")
+            args.append(msg)
+        }
+        let result = try run(self.path, arguments: args)
+        guard result.isSuccessful == true else {
+            throw Error.gitCommitMessageOfFailure
+        }
+    }
+
+    public func revList(from: String, to: String) throws -> [String] {
+        let result = try run(self.path, arguments: ["rev-list", "\(from)..\(to)"])
+        guard result.isSuccessful == true else {
+            throw Error.gitRevListFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitRevListFailure
+        }
+
+        return output.split(separator: "\n").map { String($0) }
+    }
+
+    public func forceBranch(named: String, to: String) throws {
+        let result = try run(self.path, arguments: ["branch", "-f", named, to])
+        guard result.isSuccessful == true else {
+            throw Error.gitForceBranchFailure
+        }
+    }
+
+    public func deleteBranch(named: String) throws {
+        let result = try run(self.path, arguments: ["branch", "-D", named])
+        guard result.isSuccessful == true else {
+            throw Error.gitDeleteBranchFailure
+        }
+    }
+
+    public func checkout(ref: String) throws {
+        let result = try run(self.path, arguments: ["checkout", ref])
+        guard result.isSuccessful == true else {
+            throw Error.gitCheckoutFailure
+        }
     }
 }
