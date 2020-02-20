@@ -41,7 +41,16 @@ public final class GitPatchStack {
         case "pull":
             try self.pull()
         case "show":
-            self.show()
+            guard self.arguments.count == 3 else {
+                throw Error.invalidArgumentCount
+            }
+
+            if let index = Int(self.arguments[2]) {
+                try self.show(patchIndex: index)
+            } else {
+                print("Usage: git-ps show <patch-index>")
+                print("Note: Run 'git-ps ls' to see the current patches an their index values")
+            }
         default:
             print("default")
         }
@@ -82,6 +91,12 @@ public final class GitPatchStack {
     private func patchStack() throws -> [CommitSummary] {
         let patches = try git.commits(from: self.remoteBase, to: self.baseBranch)
         return patches.reversed() // reverse so indexing is 0 closest to origin, u
+    }
+
+    private func getPatch(index: Int) throws -> CommitSummary? {
+        let patches = try self.patchStack()
+        guard (index >= 0) && (index < patches.count) else { return nil }
+        return patches[index]
     }
 
     private func list() throws {
@@ -142,11 +157,12 @@ public final class GitPatchStack {
         try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch)
     }
 
-    private func show() {
-        print("show")
+    private func show(patchIndex: Int) throws {
+        guard let patch = try self.getPatch(index: patchIndex) else {
+            print("Error: there is no patch with an index of \(patchIndex)")
+            return
+        }
 
-        // get the sha of the commit to show
-
-        // show the commit
+        self.git.show(commit: patch.sha)
     }
 }

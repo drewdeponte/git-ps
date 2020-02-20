@@ -52,6 +52,10 @@ public class GitShell {
         }
     }
 
+    public func show(commit: String) {
+        replaceProcess(self.path, command: "git", arguments: ["show", "--pretty=raw", commit])
+    }
+
     public func rebase(onto: String, from: String, to: String, interactive: Bool = false) throws {
         if interactive {
             replaceProcess(self.path, command: "git", arguments: ["rebase", "-i", "--onto", onto, from, to])
