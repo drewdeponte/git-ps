@@ -225,7 +225,7 @@ public class GitShell {
         }
     }
 
-    public func findDotGit() throws -> String? {
+    public func findDotGit() throws -> URL? {
         let result = try run(self.path, arguments: ["rev-parse", "--show-toplevel"])
         guard result.isSuccessful == true else {
             return nil
@@ -243,7 +243,7 @@ public class GitShell {
         }
 
         if directoryExists(atPath: dotGitURL.path) {
-            return dotGitURL.path
+            return dotGitURL
         } else {
             return nil
         }
