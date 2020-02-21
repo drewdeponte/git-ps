@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "JsonFileManager",
+        "repositoryURL": "git@github.com:uptech/JsonFileManager.git",
+        "state": {
+          "branch": null,
+          "revision": "79533bece9ccea1112e96cec746d52dae5977045",
+          "version": "2.0.0"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
