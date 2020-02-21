@@ -224,4 +224,34 @@ public class GitShell {
             throw Error.gitCreateBranchFailure
         }
     }
+
+    public func findDotGit() throws -> String? {
+        let result = try run(self.path, arguments: ["rev-parse", "--show-toplevel"])
+        guard result.isSuccessful == true else {
+            return nil
+        }
+
+        guard let output = result.standardOutput else {
+            return nil
+        }
+
+        let repositoryTopLevelPath = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pathComponents = [repositoryTopLevelPath, ".git"]
+
+        guard let dotGitURL = NSURL.fileURL(withPathComponents: pathComponents) else {
+            return nil
+        }
+
+        if directoryExists(atPath: dotGitURL.path) {
+            return dotGitURL.path
+        } else {
+            return nil
+        }
+    }
+}
+
+fileprivate func directoryExists(atPath path: String) -> Bool {
+    var isDirectory = ObjCBool(true)
+    let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+    return exists && isDirectory.boolValue
 }
