@@ -31,6 +31,7 @@ public class GitShell {
         case gitCreateBranchFailure
         case gitCherryPickFailure
         case gitCherryPickAbortFailure
+        case gitForcePushFailure
     }
 
     private let path: String
@@ -268,6 +269,13 @@ public class GitShell {
             return dotGitURL
         } else {
             return nil
+        }
+    }
+
+    public func forcePush(branch: String, upToRemote remote: String) throws {
+        let result = try run(self.path, arguments: ["push", "-f", "-q", remote, "\(branch):\(branch)"])
+        guard result.isSuccessful == true else {
+            throw Error.gitForcePushFailure
         }
     }
 }
