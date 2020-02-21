@@ -28,6 +28,7 @@ public class GitShell {
         case gitDeleteBranchFailure
         case gitCheckoutFailure
         case gitCommitSummaryFailure
+        case gitCreateBranchFailure
     }
 
     private let path: String
@@ -215,5 +216,12 @@ public class GitShell {
             throw Error.gitCommitSummaryFailure
         }
         return commit
+    }
+
+    public func createBranch(named: String, on: String) throws {
+        let result = try run(self.path, arguments: ["branch", "-f", "-q", "--no-track", named, on])
+        guard result.isSuccessful == true else {
+            throw Error.gitCreateBranchFailure
+        }
     }
 }
