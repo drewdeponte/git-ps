@@ -127,6 +127,7 @@ public class GitShell {
     }
 
     public func cherryPickCommits(from: String, to: String) throws {
+        print("- cherry picking \(from)..\(to)")
         let result = try run(self.path, arguments: ["cherry-pick", "\(from)..\(to)"])
         guard result.isSuccessful == true else {
             if let errOutput = result.standardOutput {
