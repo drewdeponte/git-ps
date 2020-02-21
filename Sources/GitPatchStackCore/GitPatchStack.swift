@@ -85,6 +85,8 @@ public final class GitPatchStack {
                 print("Usage: git-ps pub [-f] <patch-index>")
                 print("Note: Run 'git-ps ls' to see the current patches an their index values")
             }
+        case "--version":
+            print("v\(VERSION)")
         default:
             print("default")
         }
