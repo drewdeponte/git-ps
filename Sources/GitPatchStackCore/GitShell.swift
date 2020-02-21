@@ -29,6 +29,7 @@ public class GitShell {
         case gitCheckoutFailure
         case gitCommitSummaryFailure
         case gitCreateBranchFailure
+        case gitCherryPickFailure
     }
 
     private let path: String
@@ -130,6 +131,16 @@ public class GitShell {
                 print(errOutput)
             }
             throw Error.gitCherryPickCommitsFailure
+        }
+    }
+
+    public func cherryPick(ref: String) throws {
+        let result = try run(self.path, arguments: ["cherry-pick", "\(ref)"])
+        guard result.isSuccessful == true else {
+            if let errOutput = result.standardOutput {
+                print(errOutput)
+            }
+            throw Error.gitCherryPickFailure
         }
     }
 
