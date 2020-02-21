@@ -3,6 +3,7 @@ import Foundation
 public final class GitPatchStack {
     public enum Error: Swift.Error {
         case invalidArgumentCount
+        case commandFailed
     }
 
     private let arguments: [String]
@@ -60,7 +61,7 @@ public final class GitPatchStack {
             }
         case "pub":
             // TODO:
-            self.publish()
+            try self.publish()
         default:
             print("default")
         }
@@ -124,6 +125,13 @@ public final class GitPatchStack {
     }
 
     public func requestReview(patchIndex: Int) throws {
+        guard let dotGitDirURL = try self.git.findDotGit() else {
+            print("Error: doesn't seem like you are in a git repository")
+            return
+        }
+
+        let rrRepository = try RequestReviewRepository(dirURL: dotGitDirURL)
+
         guard let patch = try self.getPatch(index: patchIndex) else {
             print("Error: there is no patch with an index of \(patchIndex)")
             return
@@ -139,40 +147,52 @@ public final class GitPatchStack {
 
         if let uuid = try self.getId(patch: patch) {
             print("DREW: got uuid: \(uuid.uuidString)")
-            // already have id on commit, just need to request review
-        } else {
-            // add id to commit
-            print("DREW: would add id to it")
-            //        try self.addIdTo(uuid: UUID(), patch: patch)
-        }
 
-        // Do this so that we are always creating PR branches on top of the latest remote baseBranch
-//        try self.git.fetch(remote: self.remote, branch: self.baseBranch)
+            // Get branch name from records or generate one if can't find it
+            var rrTmpBranch: String?
+            if let rrRecord = rrRepository.fetch(uuid) {
+                rrTmpBranch = rrRecord.branchName
+            } else { // dealing with a commit with a patch stack id but no record
+                rrTmpBranch = "ps/rr/\(self.slug(patch: patch))"
+            }
 
-        // FUTURE: generate new patch stack request review branch name (maybe use first X characters of summary and some sort of slug algo)
+            guard let rrBranch = rrTmpBranch else {
+                return
+            }
 
-        // create the new request review branch on remote base
+            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha)
+            try rrRepository.record(record)
 
-        // checkout the new branch
+            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
 
-        // cherry pick selected commit sha into branch
-
-            // if fails to cherry pick
-
-            // cherry pick abort
+            // push branch up to remote
+            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
 
             // checkout original branch
+            try self.git.checkout(ref: originalBranch)
+        } else {
+            // add id to commit
+            let newPatchID = UUID()
+            let newPatch = try self.addIdTo(uuid: newPatchID, patch: patch)
 
-            // exit with error
+            // generate branch name
+            let rrBranch = "ps/rr/\(self.slug(patch: patch))"
 
-        // push branch up to remote
+            let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha)
+            try rrRepository.record(record)
 
-        // checkout original branch
+            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
+
+            // push branch up to remote
+            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
+
+            // checkout original branch
+            try self.git.checkout(ref: originalBranch)
+        }
     }
 
-    public func publish() {
+    public func publish() throws {
         print("publish")
-
         // get the sha of the commit to publish upstream
     }
 
@@ -220,6 +240,31 @@ public final class GitPatchStack {
 
     private func slug(patch: CommitSummary) -> String {
         return patch.summary.replaceCharactersFromSet(characterSet: CharacterSet.alphanumerics.inverted, replacementString: "_").lowercased()
+    }
+
+    private func createOrUpdateRequestReviewBranch(named branchName: String, withCommit commitRef: String, fallbackBranchName: String) throws {
+        // Do this so that we are always creating PR branches on top of the latest remote baseBranch
+        try self.git.fetch(remote: self.remote, branch: self.baseBranch)
+
+        // create the new request review branch on remote base
+        try self.git.createBranch(named: branchName, on: self.remoteBase)
+
+        // checkout the new branch
+        try self.git.checkout(ref: branchName)
+
+        do {
+            // cherry pick selected commit sha into branch
+            try self.git.cherryPick(ref: commitRef)
+        } catch GitShell.Error.gitCherryPickFailure {
+            // cherry pick abort
+            try self.git.cherryPickAbort()
+
+            // checkout original branch
+            try self.git.checkout(ref: fallbackBranchName)
+
+            // exit with error
+            throw Error.commandFailed
+        }
     }
 }
 
