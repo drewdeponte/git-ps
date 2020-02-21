@@ -217,4 +217,14 @@ public final class GitPatchStack {
             return nil
         }
     }
+
+    private func slug(patch: CommitSummary) -> String {
+        return patch.summary.replaceCharactersFromSet(characterSet: CharacterSet.alphanumerics.inverted, replacementString: "_").lowercased()
+    }
+}
+
+extension String {
+  func replaceCharactersFromSet(characterSet: CharacterSet, replacementString: String = "") -> String {
+    return self.components(separatedBy: characterSet).joined(separator: replacementString)
+  }
 }
