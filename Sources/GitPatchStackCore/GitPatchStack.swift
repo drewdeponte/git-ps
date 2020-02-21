@@ -7,6 +7,12 @@ public final class GitPatchStack {
         case patchConflict
     }
 
+    private enum CommitRequestReviewStatus {
+        case unrequested
+        case requestedAndUnchangedSince
+        case requestedAndChangedSince
+    }
+
     private let arguments: [String]
     private let remote: String
     private let baseBranch: String
@@ -69,13 +75,23 @@ public final class GitPatchStack {
     }
 
     public func list() throws {
+        guard let dotGitDirURL = try self.git.findDotGit() else {
+            print("Error: doesn't seem like you are in a git repository")
+            return
+        }
+
+        let rrRepository = try RequestReviewRepository(dirURL: dotGitDirURL)
+
         let patches = try self.patchStack()
-        patches.enumerated().reversed().forEach { (offset: Int, commitSummary: CommitSummary) in
+        try patches.enumerated().reversed().forEach { (offset: Int, commitSummary: CommitSummary) in
+
+            let abbrev = self.requestReviewStatusToAbbrev(try self.requestReviewStatus(commitSummary, requestReviewRepository: rrRepository))
+
             var offsetStr = "\(offset)"
             for _ in 0...(2 - offsetStr.count) {
                 offsetStr = " \(offsetStr)"
             }
-            print("\(offsetStr) \(String(describing: commitSummary))")
+            print("\(offsetStr) \(abbrev) \(String(describing: commitSummary))")
         }
     }
 
@@ -269,6 +285,32 @@ public final class GitPatchStack {
 
             // exit with error
             throw Error.patchConflict
+        }
+    }
+
+    private func requestReviewStatus(_ commitSummary: CommitSummary, requestReviewRepository: RequestReviewRepository) throws -> CommitRequestReviewStatus {
+
+        if let id = try self.getId(patch: commitSummary) {
+            // have requested
+            if let record = requestReviewRepository.fetch(id) {
+                if record.commitID == commitSummary.sha  {
+                    return .requestedAndUnchangedSince
+                } else {
+                    return .requestedAndUnchangedSince
+                }
+            } else {
+                return .unrequested
+            }
+        } else {
+            return .unrequested
+        }
+    }
+
+    private func requestReviewStatusToAbbrev(_ requestReviewStatus: CommitRequestReviewStatus) -> String {
+        switch requestReviewStatus {
+        case .unrequested: return "   "
+        case .requestedAndUnchangedSince: return "rr "
+        case .requestedAndChangedSince: return "rr+"
         }
     }
 }
