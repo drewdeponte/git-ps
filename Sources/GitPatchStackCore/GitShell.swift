@@ -32,6 +32,8 @@ public class GitShell {
         case gitCherryPickFailure
         case gitCherryPickAbortFailure
         case gitForcePushFailure
+        case gitPushFailure
+        case gitDeleteRemoteBranchFailure
     }
 
     private let path: String
@@ -228,6 +230,13 @@ public class GitShell {
         }
     }
 
+    public func deleteRemoteBranch(named branch: String, remote: String) throws {
+        let result = try run(self.path, arguments: ["push", remote, ":\(branch)"])
+        guard result.isSuccessful == true else {
+            throw Error.gitDeleteRemoteBranchFailure
+        }
+    }
+
     public func checkout(ref: String) throws {
         let result = try run(self.path, arguments: ["checkout", ref])
         guard result.isSuccessful == true else {
@@ -277,6 +286,13 @@ public class GitShell {
         let result = try run(self.path, arguments: ["push", "-f", "-q", remote, "\(branch):\(branch)"])
         guard result.isSuccessful == true else {
             throw Error.gitForcePushFailure
+        }
+    }
+
+    public func push(localBranch: String, upToRemote remote: String, remoteBranch: String) throws {
+        let result = try run(self.path, arguments: ["push", remote, "\(localBranch):\(remoteBranch)"])
+        guard result.isSuccessful == true else {
+            throw Error.gitPushFailure
         }
     }
 }

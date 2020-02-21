@@ -67,8 +67,24 @@ public final class GitPatchStack {
                 print("Note: Run 'git-ps ls' to see the current patches an their index values")
             }
         case "pub":
-            // TODO:
-            try self.publish()
+            if self.arguments.count == 3 { // git-ps pub <patch-index>
+                if let index = Int(self.arguments[2]) {
+                    try self.publish(patchIndex: index)
+                } else {
+                    print("Usage: git-ps pub [-f] <patch-index>")
+                    print("Note: Run 'git-ps ls' to see the current patches an their index values")
+                }
+            } else if self.arguments.count == 4 { // git-ps pub -f <patch-index>
+                if let index = Int(self.arguments[3]), self.arguments[2] == "-f"  {
+                    try self.publish(patchIndex: index, force: true)
+                } else {
+                    print("Usage: git-ps pub [-f] <patch-index>")
+                    print("Note: Run 'git-ps ls' to see the current patches an their index values")
+                }
+            } else {
+                print("Usage: git-ps pub [-f] <patch-index>")
+                print("Note: Run 'git-ps ls' to see the current patches an their index values")
+            }
         default:
             print("default")
         }
@@ -196,9 +212,94 @@ public final class GitPatchStack {
         }
     }
 
-    public func publish() throws {
-        print("publish")
-        // get the sha of the commit to publish upstream
+    public func publish(patchIndex: Int, force: Bool = false) throws {
+        guard let dotGitDirURL = try self.git.findDotGit() else {
+            print("Error: doesn't seem like you are in a git repository")
+            return
+        }
+        print("- found .git dir - \(dotGitDirURL.path)")
+
+        let rrRepository = try RequestReviewRepository(dirURL: dotGitDirURL)
+        print("- loaded request review state repository")
+
+        guard let patch = try self.getPatch(index: patchIndex) else {
+            print("Error: there is no patch with an index of \(patchIndex)")
+            return
+        }
+        print("- fetched patch at index - \(patchIndex)")
+
+        guard try !self.git.uncommittedChangePresent() else {
+            print("Error: uncommited changes are present")
+            print("Please commit or stash any uncommitted changes before running this command.")
+            return
+        }
+        print("- verified no uncommited changes are present")
+
+        let originalBranch = try self.git.getCheckedOutBranch()
+        print("- identified originating branch - \(originalBranch)")
+
+        if let uuid = try self.getId(patch: patch) {
+            print("- parsed patch id (\(uuid.uuidString)) out of commit description")
+
+            // Get branch name from records or generate one if can't find it
+            var rrTmpBranch: String?
+            if let rrRecord = rrRepository.fetch(uuid) {
+                print("- found record in request review state repository for id - \(uuid.uuidString)")
+                rrTmpBranch = rrRecord.branchName
+                print("- using branch name from request review state repository record - \(rrTmpBranch!)")
+            } else { // dealing with a commit with a patch stack id but no record
+                print("- failed to find record in request review state repository for id - \(uuid.uuidString)")
+                rrTmpBranch = "ps/rr/\(self.slug(patch: patch))"
+                print("- generated slug based branch name - \(rrTmpBranch!)")
+            }
+
+            guard let rrBranch = rrTmpBranch else {
+                return
+            }
+
+            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha)
+            try rrRepository.record(record)
+            print("- recorded patch id, branch name, and commit sha association in request review state repository")
+
+            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
+
+            // push branch up to remote
+            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
+            print("- force pushed \(rrBranch) up to \(self.remote)")
+
+            try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
+
+            // checkout original branch
+            try self.git.checkout(ref: originalBranch)
+            print("- checked out \(originalBranch) so you are where you started")
+
+            try self.git.deleteRemoteBranch(named: rrBranch, remote: self.remote)
+
+            try self.git.deleteBranch(named: rrBranch)
+        } else {
+            if force {
+                // generate branch name
+                let rrBranch = "ps/rr/\(self.slug(patch: patch))"
+
+                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
+
+                // push branch up to remote
+                try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
+                print("- force pushed \(rrBranch) up to \(self.remote)")
+
+                try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
+
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+
+                try self.git.deleteRemoteBranch(named: rrBranch, remote: self.remote)
+
+                try self.git.deleteBranch(named: rrBranch)
+            } else {
+                print("Looks like you haven't requested review for this patch yet. Please do so before publishing. If you want to publish without requesting review use 'git-ps pub -f'.")
+            }
+        }
     }
 
     private func patchStack() throws -> [CommitSummary] {
