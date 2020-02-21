@@ -10,11 +10,16 @@ class RequestReviewRepository {
     public init(dirURL: URL) throws {
         self.fileURL = dirURL.appendingPathComponent("patch-stack-review-requests.json")
         self.fileManager = JsonFileManager<RequestReviewRecordsCache>(fileURL: self.fileURL)
-        try fileManager.read { [weak self] (records) in
-            self?.requestedReviewRecords.merge(records, uniquingKeysWith: { (origRecord, newRecord) -> RequestReviewRecord in
-                return newRecord
-            })
+        do {
+            try fileManager.read { [weak self] (records) in
+                self?.requestedReviewRecords.merge(records, uniquingKeysWith: { (origRecord, newRecord) -> RequestReviewRecord in
+                    return newRecord
+                })
+            }
+        } catch JsonFileManagerError.fileMissing {
+            try self.fileManager.save(data: self.requestedReviewRecords)
         }
+
     }
 
     public func record(_ requestReviewRecord: RequestReviewRecord) throws {
