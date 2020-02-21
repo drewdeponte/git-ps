@@ -4,6 +4,7 @@ public final class GitPatchStack {
     public enum Error: Swift.Error {
         case invalidArgumentCount
         case commandFailed
+        case patchConflict
     }
 
     private let arguments: [String]
@@ -101,31 +102,40 @@ public final class GitPatchStack {
             print("Error: doesn't seem like you are in a git repository")
             return
         }
+        print("found .git dir - \(dotGitDirURL.path)")
 
         let rrRepository = try RequestReviewRepository(dirURL: dotGitDirURL)
+        print("loaded request review state repository")
 
         guard let patch = try self.getPatch(index: patchIndex) else {
             print("Error: there is no patch with an index of \(patchIndex)")
             return
         }
+        print("fetched patch at index - \(patchIndex)")
 
         guard try !self.git.uncommittedChangePresent() else {
             print("Error: uncommited changes are present")
             print("Please commit or stash any uncommitted changes before running this command.")
             return
         }
+        print("verified no uncommited changes are present")
 
         let originalBranch = try self.git.getCheckedOutBranch()
+        print("identified originating branch - \(originalBranch)")
 
         if let uuid = try self.getId(patch: patch) {
-            print("DREW: got uuid: \(uuid.uuidString)")
+            print("parsed patch id (\(uuid.uuidString)) out of commit description")
 
             // Get branch name from records or generate one if can't find it
             var rrTmpBranch: String?
             if let rrRecord = rrRepository.fetch(uuid) {
+                print("found record in request review state repository for id - \(uuid.uuidString)")
                 rrTmpBranch = rrRecord.branchName
+                print("using branch name from request review state repository record - \(rrTmpBranch!)")
             } else { // dealing with a commit with a patch stack id but no record
+                print("failed to find record in request review state repository for id - \(uuid.uuidString)")
                 rrTmpBranch = "ps/rr/\(self.slug(patch: patch))"
+                print("generated slug based branch name - \(rrTmpBranch!)")
             }
 
             guard let rrBranch = rrTmpBranch else {
@@ -134,15 +144,19 @@ public final class GitPatchStack {
 
             let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha)
             try rrRepository.record(record)
+            print("recorded patch id, branch name, and commit sha association in request review state repository")
 
             try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
 
             // push branch up to remote
             try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
+            print("force pushed \(rrBranch) up to \(self.remote)")
 
             // checkout original branch
             try self.git.checkout(ref: originalBranch)
+            print("checked out \(originalBranch) so you are where you started")
         } else {
+            print("failed to parse a patch id out of commit description")
             // add id to commit
             let newPatchID = UUID()
             let newPatch = try self.addIdTo(uuid: newPatchID, patch: patch)
@@ -152,14 +166,17 @@ public final class GitPatchStack {
 
             let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha)
             try rrRepository.record(record)
+            print("recorded patch id, branch name, and commit sha association in request review state repository")
 
             try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
 
             // push branch up to remote
             try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
+            print("force pushed \(rrBranch) up to \(self.remote)")
 
             // checkout original branch
             try self.git.checkout(ref: originalBranch)
+            print("checked out \(originalBranch) so you are where you started")
         }
     }
 
@@ -217,25 +234,34 @@ public final class GitPatchStack {
     private func createOrUpdateRequestReviewBranch(named branchName: String, withCommit commitRef: String, fallbackBranchName: String) throws {
         // Do this so that we are always creating PR branches on top of the latest remote baseBranch
         try self.git.fetch(remote: self.remote, branch: self.baseBranch)
+        print("fetched \(self.remoteBase)")
 
         // create the new request review branch on remote base
         try self.git.createBranch(named: branchName, on: self.remoteBase)
+        print("created branch (\(branchName)) on (\(self.remoteBase))")
 
         // checkout the new branch
         try self.git.checkout(ref: branchName)
+        print("checked out \(branchName)")
 
         do {
+            print("cherry picking commit - \(commitRef)")
             // cherry pick selected commit sha into branch
             try self.git.cherryPick(ref: commitRef)
+            print("successfully cherry picked commit - \(commitRef)")
         } catch GitShell.Error.gitCherryPickFailure {
+            print("Looks like you are trying to request review of a patch that conflicts with \(self.remoteBase). It could be that it is dependent on another patch that is NOT currently in \(self.remoteBase) or just be conflicting with recent changes to \(self.remoteBase).  Dependent patches MUST be in \(self.remoteBase) before requesting review of patches that depend on them.\n")
+
             // cherry pick abort
             try self.git.cherryPickAbort()
+            print("Aborted cherry pick")
 
             // checkout original branch
             try self.git.checkout(ref: fallbackBranchName)
+            print("Checked out \(fallbackBranchName) so you are left off where you started")
 
             // exit with error
-            throw Error.commandFailed
+            throw Error.patchConflict
         }
     }
 }
