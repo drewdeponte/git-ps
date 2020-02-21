@@ -102,7 +102,11 @@ public final class GitPatchStack {
     public func list() throws {
         let patches = try self.patchStack()
         patches.enumerated().reversed().forEach { (offset: Int, commitSummary: CommitSummary) in
-            print("\(offset) \(String(describing: commitSummary))")
+            var offsetStr = "\(offset)"
+            for _ in 0...(2 - offsetStr.count) {
+                offsetStr = " \(offsetStr)"
+            }
+            print("\(offsetStr) \(String(describing: commitSummary))")
         }
     }
 
