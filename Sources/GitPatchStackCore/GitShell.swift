@@ -30,6 +30,7 @@ public class GitShell {
         case gitCommitSummaryFailure
         case gitCreateBranchFailure
         case gitCherryPickFailure
+        case gitCherryPickAbortFailure
     }
 
     private let path: String
@@ -141,6 +142,16 @@ public class GitShell {
                 print(errOutput)
             }
             throw Error.gitCherryPickFailure
+        }
+    }
+
+    public func cherryPickAbort() throws {
+        let result = try run(self.path, arguments: ["cherry-pick", "--abort"])
+        guard result.isSuccessful == true else {
+            if let errOutput = result.standardOutput {
+                print(errOutput)
+            }
+            throw Error.gitCherryPickAbortFailure
         }
     }
 
