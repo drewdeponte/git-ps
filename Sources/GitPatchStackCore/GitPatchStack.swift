@@ -399,7 +399,7 @@ public final class GitPatchStack {
                 if record.commitID == commitSummary.sha  {
                     return .requestedAndUnchangedSince
                 } else {
-                    return .requestedAndUnchangedSince
+                    return .requestedAndChangedSince
                 }
             } else {
                 return .unrequested
