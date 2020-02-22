@@ -34,6 +34,7 @@ public class GitShell {
         case gitForcePushFailure
         case gitPushFailure
         case gitDeleteRemoteBranchFailure
+        case gitMergeBaseFailure
     }
 
     private let path: String
@@ -302,6 +303,19 @@ public class GitShell {
         guard result.isSuccessful == true else {
             throw Error.gitPushFailure
         }
+    }
+
+    public func mergeBase(refA: String, refB: String) throws -> String {
+        let result = try run(self.path, arguments: ["merge-base", refA, refB])
+        guard result.isSuccessful == true else {
+            throw Error.gitMergeBaseFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitMergeBaseFailure
+        }
+
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

@@ -317,8 +317,9 @@ public final class GitPatchStack {
 
     private func addIdTo(uuid: UUID, patch: CommitSummary) throws -> CommitSummary {
         let originalBranch = try self.git.getCheckedOutBranch()
-        try self.git.createAndCheckout(branch: "ps/tmp/add_id_rework", startingFrom: self.remoteBase)
-        try self.git.cherryPickCommits(from: self.remoteBase, to: patch.sha)
+        let commonAncestorRef = try self.git.mergeBase(refA: patch.sha, refB: self.remoteBase)
+        try self.git.createAndCheckout(branch: "ps/tmp/add_id_rework", startingFrom: commonAncestorRef)
+        try self.git.cherryPickCommits(from: commonAncestorRef, to: patch.sha)
         let shaOfPatchPrime = try self.git.getShaOf(ref: "HEAD")
         print("- got sha of HEAD (a.k.a. patch') - \(shaOfPatchPrime)")
         let originalMessage = try self.git.commitMessageOf(ref: shaOfPatchPrime)
