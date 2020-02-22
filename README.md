@@ -77,5 +77,21 @@ The idea is that instead of creating feature branches you simply make commits on
 
 The Patch Stack workflow also expects each patch (a.k.a. commit) to be **small, buildable, logical units of work with valuable messages** providing the *what*, *why*, and any *contextual details around how*. This aids drastically in the code review process as each patch becomes a very focused piece of work with clear intent. It also helps conceptually "show your work", the logical progression of changes (patches) needed to accomplish some larger goal. These principles are as extremely valuable when doing historical spelunking to learn a code base or to iron out a bug. These principles bring even more value as they enable you to take advantage of all the amazing features of [Git][], e.g. `git bisect`, etc.
 
+## License
+
+`git-ps` is Copyright © 2020 UpTech Works, LLC. It is free software, and
+may be redistributed under the terms specified in the LICENSE file.
+
+## About <img src="http://upte.ch/img/logo.png" alt="uptech" height="48">
+
+`git-ps` is maintained and funded by [UpTech Works, LLC][uptech], a software
+design & development agency & consultancy.
+
+We love open source software. See [our other projects][community] or
+[hire us][hire] to design, develop, and grow your product.
+
 [Git]: https://git-scm.com
 [GNU make]: https://www.gnu.org/software/make/
+[community]: https://github.com/uptech
+[hire]: http://upte.ch
+[uptech]: http://upte.ch
