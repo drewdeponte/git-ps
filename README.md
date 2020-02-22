@@ -12,6 +12,43 @@ It consists of the following commands:
 - `git-ps pub <patch-index>` to publish a patch into upstream's mainline (aka origin/master)
 - `git-ps --version` to output the version of information for reference & bug reporting
 
+## Installation
+
+If you are on a platform other than macOS you will have to build your own
+version from source.
+
+### macOS
+
+To install on macOS we provide a [Homebrew](http://brew.sh) tap which provides
+the `git-ps` formula. You can use it by doing the following:
+
+#### Add the Tap
+
+```
+brew tap "uptech/homebrew-oss"
+```
+
+#### brew install
+
+```
+brew install uptech/oss/git-ps
+```
+
+### Build from Source
+
+If you are on another platform you will have to build from source. Given
+that `git-ps` is managed via [GNU make][]. It can be built as follows:
+
+```
+$ make build
+```
+
+Once you have built it successfully you can install it in `/usr/local/bin` using the following:
+
+```
+$ make install
+```
+
 ## Development
 
 We use [GNU make][] to manage the developer build process with the following commands.
@@ -39,7 +76,6 @@ The patch stack workflow is a different mental model for doing development local
 The idea is that instead of creating feature branches you simply make commits on your local `master` and perform interactive rebases to squash, reorder, ammend, etc. your patches as you continue to develop. This has an amazing benefit. **It eliminates the dependent branch problem.** You know the one where you created one change in a branch and submitted for review, but then you went off to create another branch on top of the last one, and so on. Soon enough you have to make changes as a result of the review to the first feature branch. And, down the feature branch rebasing train you go.
 
 The Patch Stack workflow also expects each patch (a.k.a. commit) to be **small, buildable, logical units of work with valuable messages** providing the *what*, *why*, and any *contextual details around how*. This aids drastically in the code review process as each patch becomes a very focused piece of work with clear intent. It also helps conceptually "show your work", the logical progression of changes (patches) needed to accomplish some larger goal. These principles are as extremely valuable when doing historical spelunking to learn a code base or to iron out a bug. These principles bring even more value as they enable you to take advantage of all the amazing features of [Git][], e.g. `git bisect`, etc.
-
 
 [Git]: https://git-scm.com
 [GNU make]: https://www.gnu.org/software/make/
