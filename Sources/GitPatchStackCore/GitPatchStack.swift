@@ -11,6 +11,7 @@ public final class GitPatchStack {
         case unrequested
         case requestedAndUnchangedSince
         case requestedAndChangedSince
+        case published
     }
 
     private let arguments: [String]
@@ -176,7 +177,7 @@ public final class GitPatchStack {
                 return
             }
 
-            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha)
+            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: false)
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
@@ -198,7 +199,7 @@ public final class GitPatchStack {
             // generate branch name
             let rrBranch = "ps/rr/\(self.slug(patch: patch))"
 
-            let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha)
+            let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: false)
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
@@ -259,10 +260,6 @@ public final class GitPatchStack {
                 return
             }
 
-            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha)
-            try rrRepository.record(record)
-            print("- recorded patch id, branch name, and commit sha association in request review state repository")
-
             try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
 
             // push branch up to remote
@@ -270,6 +267,10 @@ public final class GitPatchStack {
             print("- force pushed \(rrBranch) up to \(self.remote)")
 
             try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
+
+            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: true)
+            try rrRepository.record(record)
+            print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
             // checkout original branch
             try self.git.checkout(ref: originalBranch)
@@ -280,16 +281,25 @@ public final class GitPatchStack {
             try self.git.deleteBranch(named: rrBranch)
         } else {
             if force {
+                print("- failed to parse a patch id out of commit description")
+                // add id to commit
+                let newPatchID = UUID()
+                let newPatch = try self.addIdTo(uuid: newPatchID, patch: patch)
+
                 // generate branch name
                 let rrBranch = "ps/rr/\(self.slug(patch: patch))"
 
-                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
+                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
 
                 // push branch up to remote
                 try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
                 print("- force pushed \(rrBranch) up to \(self.remote)")
 
                 try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
+
+                let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: true)
+                try rrRepository.record(record)
+                print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
                 // checkout original branch
                 try self.git.checkout(ref: originalBranch)
@@ -397,10 +407,22 @@ public final class GitPatchStack {
         if let id = try self.getId(patch: commitSummary) {
             // have requested
             if let record = requestReviewRepository.fetch(id) {
-                if record.commitID == commitSummary.sha  {
-                    return .requestedAndUnchangedSince
+                if let published = record.published {
+                    if published {
+                        return .published
+                    } else {
+                        if record.commitID == commitSummary.sha  {
+                            return .requestedAndUnchangedSince
+                        } else {
+                            return .requestedAndChangedSince
+                        }
+                    }
                 } else {
-                    return .requestedAndChangedSince
+                    if record.commitID == commitSummary.sha  {
+                        return .requestedAndUnchangedSince
+                    } else {
+                        return .requestedAndChangedSince
+                    }
                 }
             } else {
                 return .unrequested
@@ -415,6 +437,7 @@ public final class GitPatchStack {
         case .unrequested: return "   "
         case .requestedAndUnchangedSince: return "rr "
         case .requestedAndChangedSince: return "rr+"
+        case .published: return "  p"
         }
     }
 }
