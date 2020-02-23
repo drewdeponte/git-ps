@@ -291,10 +291,25 @@ public class GitShell {
         }
     }
 
-    public func forcePush(branch: String, upToRemote remote: String) throws {
+    public func forcePush(branch: String, upToRemote remote: String, displayOutput: Bool = false) throws {
         let result = try run(self.path, arguments: ["push", "-f", "-q", remote, "\(branch):\(branch)"])
         guard result.isSuccessful == true else {
             throw Error.gitForcePushFailure
+        }
+
+        if displayOutput {
+            if let output = result.standardOutput {
+                let cleansedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                if cleansedOutput != "" {
+                    print(cleansedOutput)
+                }
+            }
+            if let errOutput = result.standardError {
+                let cleansedErrOutput = errOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+                if cleansedErrOutput != "" {
+                    print(cleansedErrOutput)
+                }
+            }
         }
     }
 

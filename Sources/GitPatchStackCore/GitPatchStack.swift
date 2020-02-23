@@ -193,7 +193,7 @@ public final class GitPatchStack {
             try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
 
             // push branch up to remote
-            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
+            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote, displayOutput: true)
             print("- force pushed \(rrBranch) up to \(self.remote)")
 
             // checkout original branch
@@ -215,7 +215,7 @@ public final class GitPatchStack {
             try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
 
             // push branch up to remote
-            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
+            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote, displayOutput: true)
             print("- force pushed \(rrBranch) up to \(self.remote)")
 
             // checkout original branch
