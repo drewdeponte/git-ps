@@ -7,6 +7,10 @@ class RequestReviewRepository {
     private let fileManager: JsonFileManager<RequestReviewRecordsCache>
     private var requestedReviewRecords: RequestReviewRecordsCache = [:]
 
+    public var all: Dictionary<UUID, RequestReviewRecord> {
+        get { return self.requestedReviewRecords }
+    }
+
     public init(dirURL: URL) throws {
         self.fileURL = dirURL.appendingPathComponent("patch-stack-review-requests.json")
         self.fileManager = JsonFileManager<RequestReviewRecordsCache>(fileURL: self.fileURL)
