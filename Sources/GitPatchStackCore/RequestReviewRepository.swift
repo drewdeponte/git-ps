@@ -27,6 +27,11 @@ class RequestReviewRepository {
         try self.fileManager.save(data: self.requestedReviewRecords)
     }
 
+    public func removeRecord(withPatchStackID: UUID) throws {
+        self.requestedReviewRecords.removeValue(forKey: withPatchStackID)
+        try self.fileManager.save(data: self.requestedReviewRecords)
+    }
+
     public func fetch(_ patchStackID: UUID) -> RequestReviewRecord? {
         return self.requestedReviewRecords[patchStackID]
     }
