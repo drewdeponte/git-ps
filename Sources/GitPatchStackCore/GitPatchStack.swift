@@ -124,8 +124,17 @@ public final class GitPatchStack {
     }
 
     public func pull() throws {
+        guard let dotGitDirURL = try self.git.findDotGit() else {
+            print("Error: doesn't seem like you are in a git repository")
+            return
+        }
+
+        let rrRepository = try RequestReviewRepository(dirURL: dotGitDirURL)
+
         try self.git.fetch(remote: self.remote, branch: self.baseBranch)
         try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch)
+
+        try self.cleanse(requestReviewRepository: rrRepository)
     }
 
     public func rebase() throws {
@@ -438,6 +447,24 @@ public final class GitPatchStack {
         case .requestedAndUnchangedSince: return "rr "
         case .requestedAndChangedSince: return "rr+"
         case .published: return "  p"
+        }
+    }
+
+    private func cleanse(requestReviewRepository: RequestReviewRepository) throws {
+
+        let requestReviewRecords = requestReviewRepository.all
+
+        let matchedPatches = try self.patchStack().reduce(into: Dictionary<UUID, CommitSummary>()) { (patches, commitSummary) in
+            if let id = try self.getId(patch: commitSummary) {
+                patches[id] = commitSummary
+            }
+        }
+
+        try requestReviewRecords.forEach { (patchStackID: UUID, requestReviewRecord: RequestReviewRecord) in
+
+            if matchedPatches[patchStackID] == nil {
+                try requestReviewRepository.removeRecord(withPatchStackID: patchStackID)
+            }
         }
     }
 }
