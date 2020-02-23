@@ -5,3 +5,7 @@ A collection of all the resources around `git-ps` that we are aware of.  Sometim
 ## Videos
 
 - [Screencast](https://upte.wistia.com/medias/73nk9osds1) - Drew De Ponte adding Published State to git-ps ls while using git-ps
+
+## Presentations
+
+- [PDF Presentation](https://github.com/uptech/git-ps/raw/master/presentations/uptech-brown-bag/git-patch-stack.pdf) - used by Drew De Ponte to introduce the UpTech Works, LLC team to the concept of the patch stack workflw and the beginnings of `git-ps` at a Brown Bag Tech Talk
