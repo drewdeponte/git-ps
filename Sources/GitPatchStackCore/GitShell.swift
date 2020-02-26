@@ -77,10 +77,19 @@ public class GitShell {
 
     public func rebase(onto: String, from: String, to: String, interactive: Bool = false) throws {
         if interactive {
+            // Note: We don't need to handle explicit error output here because
+            // this replaces the process and therefore all standard out and error
+            // output will naturally endup in the shell.
             replaceProcess(self.path, command: "git", arguments: ["rebase", "-i", "--onto", onto, from, to])
         } else {
             let result = try run(self.path, arguments: ["rebase", "--onto", onto, from, to])
             guard result.isSuccessful else {
+                if let output = result.standardOutput, !output.isEmpty {
+                    print(output)
+                }
+                if let errOutput = result.standardError, !errOutput.isEmpty {
+                    print(errOutput)
+                }
                 throw Error.gitRebaseFailure
             }
         }
