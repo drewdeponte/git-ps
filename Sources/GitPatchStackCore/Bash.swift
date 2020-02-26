@@ -19,8 +19,8 @@ public class Bash {
     func which(_ commandName: String) throws -> String {
         let result = try run(self.path, arguments: ["-l", "-c", "which \(commandName)"])
         if result.terminationStatus == 0 {
-            if let path = result.standardOutput {
-                return path.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let output = result.standardOutput, let path = output.split(separator: "\n").last?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                return String(path)
             } else {
                 throw Error.outputExpectedButMissing
             }
