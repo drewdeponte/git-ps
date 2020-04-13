@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - now
 
+### Added
+
+- `--help` & `-h` flag to display usage information
+
 ## [v0.2.1] - 2020-02-26
 
 ### Fixed

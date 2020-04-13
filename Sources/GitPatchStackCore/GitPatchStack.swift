@@ -88,6 +88,8 @@ public final class GitPatchStack {
             }
         case "--version":
             print("v\(VERSION)")
+        case "--help", "-h":
+            showHelpText()
         default:
             print("default")
         }
@@ -466,6 +468,33 @@ public final class GitPatchStack {
                 try requestReviewRepository.removeRecord(withPatchStackID: patchStackID)
             }
         }
+    }
+
+    private func showHelpText() {
+        let text = """
+            usage: git-ps <command> [<patch-index>]
+
+            Commands:
+              ls             List the stack of patches
+              show <i>       Show the patch diff and details
+              pull           Fetch the state of origin/master and rebase the stack of patches onto it
+              reabase        Interactive rebase the stack of patches
+              rr <i>         Request review of the patch or update existing request to review
+              pub <i>        Publish a patch into upstream's mainline (aka origin/master)
+              --version      Output the version of information for reference & bug reporting
+              --help, -h     Show help information
+
+            git-ps ls result structure:
+              [patch-index] [review status] [commit short sha] [commit summary]
+              "0  rr  788032 Update README with deployment instructions"
+
+            git-ps ls Review Status:
+                    Has NOT requested a review (AKA Empty)
+              rr    Requested a review and it's unchanged since requesting
+              rr+   Requested a review and it has changed since requesting
+              p     Commit has been published to origin/master
+            """
+        print(text)
     }
 }
 
