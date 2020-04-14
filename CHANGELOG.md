@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - now
 
+## [v0.3.0] - 2020-03-14
+
 ### Added
 
 - `--help` & `-h` flag to display usage information
@@ -48,4 +50,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.1.0]: https://github.com/uptech/git-ps/compare/05fa129...0.1.0
 [v0.2.0]: https://github.com/uptech/git-ps/compare/0.1.0...0.2.0
 [v0.2.1]: https://github.com/uptech/git-ps/compare/0.2.0...0.2.1
-[Unreleased]: https://github.com/uptech/git-ps/compare/0.2.1...HEAD
+[v0.3.0]: https://github.com/uptech/git-ps/compare/0.2.1...0.3.0
+[Unreleased]: https://github.com/uptech/git-ps/compare/0.3.0...HEAD
