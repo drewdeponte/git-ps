@@ -47,61 +47,59 @@ public struct CommitsIterator: IteratorProtocol {
     }
 
     public mutating func next() -> Commit? {
-        var searchRange: Range<String.Index>?
-        if let prevRange = self.previousRange {
-            searchRange = prevRange.upperBound..<self.commits.formattedGitLogOutput.endIndex
-        } else {
-            searchRange = self.commits.formattedGitLogOutput.startIndex..<self.commits.formattedGitLogOutput.endIndex
-        }
+       guard !isExhausted else { return nil }
 
-        if let range = self.commits.formattedGitLogOutput.range(of: "----GIT-CHANGELOG-COMMIT-BEGIN----\n", range: searchRange) {
-            if self.isFirstMatch() {
-                self.previousRange = range
-                return self.next()
-            } else {
-                // grab the content between the end of the previous range and the beginning of the new range
-                let contentRange: Range<String.Index> = self.previousRange!.upperBound..<range.lowerBound
+       var searchRange: Range<String.Index>?
+       if let prevRange = self.previousRange {
+           searchRange = prevRange.upperBound..<self.commits.formattedGitLogOutput.endIndex
+       } else {
+           searchRange = self.commits.formattedGitLogOutput.startIndex..<self.commits.formattedGitLogOutput.endIndex
+       }
 
-                let rawCommitContent = self.commits.formattedGitLogOutput[contentRange]
+       if let range = self.commits.formattedGitLogOutput.range(of: "----GIT-CHANGELOG-COMMIT-BEGIN----\n", range: searchRange) {
+           if self.isFirstMatch() {
+               self.previousRange = range
+               return self.next()
+           } else {
+               // grab the content between the end of the previous range and the beginning of the new range
+               let contentRange: Range<String.Index> = self.previousRange!.upperBound..<range.lowerBound
 
-                let lines = rawCommitContent.trimmingCharacters(in: .whitespacesAndNewlines) .components(separatedBy: "\n")
+               let rawCommitContent = self.commits.formattedGitLogOutput[contentRange]
 
-                self.previousRange = range
+               let lines = rawCommitContent.trimmingCharacters(in: .whitespacesAndNewlines) .components(separatedBy: "\n")
 
-                var hasBody =  false
-                if lines.endIndex >= 4 {
-                    hasBody = true
-                }
+               self.previousRange = range
 
-                return Commit(sha: lines[0], date: dateFormatter.date(from: lines[1])!, summary: lines[2], body: (hasBody ? lines[4..<lines.count].joined(separator: "\n") : nil))
-            }
-        } else {
-            if isFirstMatch() {
-                return nil
-            }
+               var hasBody =  false
+               if lines.endIndex >= 4 {
+                   hasBody = true
+               }
 
-            if !self.isExhausted {
-                self.isExhausted = true
+               return Commit(sha: lines[0], date: dateFormatter.date(from: lines[1])!, summary: lines[2], body: (hasBody ? lines[4..<lines.count].joined(separator: "\n") : nil))
+           }
+       } else { // should be the end of the content
+           if isFirstMatch() {
+               return nil
+           }
 
-                let contentRange: Range<String.Index> = self.previousRange!.upperBound..<self.commits.formattedGitLogOutput.endIndex
+           self.isExhausted = true
 
-                let rawCommitContent = self.commits.formattedGitLogOutput[contentRange]
+           let contentRange: Range<String.Index> = self.previousRange!.upperBound..<self.commits.formattedGitLogOutput.endIndex
 
-                let lines = rawCommitContent.trimmingCharacters(in: .whitespacesAndNewlines) .components(separatedBy: "\n")
+           let rawCommitContent = self.commits.formattedGitLogOutput[contentRange]
 
-                self.previousRange = nil
-                self.isExhausted = true
+           let lines = rawCommitContent.trimmingCharacters(in: .whitespacesAndNewlines) .components(separatedBy: "\n")
 
-                var hasBody =  false
-                if lines.endIndex >= 4 {
-                    hasBody = true
-                }
+           self.previousRange = nil
+           self.isExhausted = true
 
-                return Commit(sha: lines[0], date: dateFormatter.date(from: lines[1])!, summary: lines[2], body: (hasBody ? lines[4..<lines.count].joined(separator: "\n") : nil))
-            } else {
-                return nil
-            }
-        }
+           var hasBody =  false
+           if lines.endIndex >= 4 {
+               hasBody = true
+           }
+
+           return Commit(sha: lines[0], date: dateFormatter.date(from: lines[1])!, summary: lines[2], body: (hasBody ? lines[4..<lines.count].joined(separator: "\n") : nil))
+       }
     }
 }
 
