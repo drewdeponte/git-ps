@@ -2,21 +2,33 @@ import Foundation
 
 public func run(_ fileURLWithPath: String, arguments: [String]) throws -> RunResult {
     let outputPipe = Pipe()
+    var outputData = Data()
+
     let errorPipe = Pipe()
+    var errorData = Data()
+
     let task = Process()
     task.executableURL = URL(fileURLWithPath: fileURLWithPath)
     task.arguments = arguments
     task.standardOutput = outputPipe
     task.standardError = errorPipe
 
+    outputPipe.fileHandleForReading.readabilityHandler = { handler in
+        outputData.append(handler.availableData)
+    }
+    errorPipe.fileHandleForReading.readabilityHandler = { handler in
+        errorData.append(handler.availableData)
+    }
+
     // Not sure what scenarios this actually throws an error. Could be worth thinking about though
     try task.run()
     task.waitUntilExit()
 
-    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-
-    let result = RunResult(standardOutput: String(data: outputData, encoding: .utf8), standardError: String(data: errorData, encoding: .utf8), terminationStatus: task.terminationStatus)
+    let result = RunResult(
+        standardOutput: String(data: outputData, encoding: .utf8),
+        standardError: String(data: errorData, encoding: .utf8),
+        terminationStatus: task.terminationStatus
+    )
     return result
 }
 
