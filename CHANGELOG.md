@@ -1,3 +1,13 @@
+# DEPRECATED
+
+This file is deprecated and is no longer used to keep track of our changelog entries.
+We have kept the file here for historical value.
+
+We now use [git-cl](https://github.com/uptech/git-cl) to manage our Changelog entries
+via commits.
+
+### Do **NOT** make anymore entries to the file
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
