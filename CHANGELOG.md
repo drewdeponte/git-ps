@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - now
 
+## [0.3.2] - 2020-05-03
+
+### Fixed
+- issue where commands with large output would hang
+
+## [0.3.1] - 2020-04-25
+
+### Changed
+- internal command execution to be faster
+
 ## [v0.3.0] - 2020-03-14
 
 ### Added
