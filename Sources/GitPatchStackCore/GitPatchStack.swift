@@ -363,7 +363,9 @@ public final class GitPatchStack {
         let message = try self.git.commitMessageOf(ref: patch.sha)
         let pattern = #"ps-id:\s(?<patchStackId>[\w\d-]+)"#
         let regex = try NSRegularExpression(pattern: pattern, options: .caseInsensitive)
-        if let match = regex.firstMatch(in: message, options: [], range: NSRange(location: 0, length: message.utf8.count)) {
+        let nsrange = NSRange(message.startIndex..<message.endIndex,
+        in: message)
+        if let match = regex.firstMatch(in: message, options: [], range: nsrange) {
             if let patchStackIdRange = Range(match.range(withName: "patchStackId"), in: message) {
                 let patchStackIdStr = String(message[patchStackIdRange])
                 return UUID(uuidString: patchStackIdStr)
