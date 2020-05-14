@@ -398,7 +398,8 @@ public final class GitPatchStack {
             print("- cherry picking commit - \(commitRef)")
             // cherry pick selected commit sha into branch
             try self.git.cherryPick(ref: commitRef)
-            print("- successfully cherry picked commit - \(commitRef)")
+            let branchSha = try self.git.getRevParse(ref: branchName)
+            print("- successfully cherry picked commit - \(commitRef) to \(branchSha)")
         } catch GitShell.Error.gitCherryPickFailure {
             print("Looks like you are trying to request review of a patch that conflicts with \(self.remoteBase). It could be that it is dependent on another patch that is NOT currently in \(self.remoteBase) or just be conflicting with recent changes to \(self.remoteBase).  Dependent patches MUST be in \(self.remoteBase) before requesting review of patches that depend on them.\n")
 

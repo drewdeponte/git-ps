@@ -113,6 +113,7 @@ public class GitShell {
         case gitCheckedOutBranchFailure
         case gitCreateAndCheckoutFailure
         case gitCherryPickCommitsFailure
+        case gitRevParseFailure
         case gitShaOfFailure
         case gitCommitMessageOfFailure
         case gitCommitAmendMessages
@@ -288,6 +289,19 @@ public class GitShell {
             }
             throw Error.gitCherryPickAbortFailure
         }
+    }
+
+    public func getRevParse(ref: String) throws -> String {
+        let result = try run(self.path, arguments: ["rev-parse", ref])
+        guard result.isSuccessful == true else {
+            throw Error.gitRevParseFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitRevParseFailure
+        }
+
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     public func getShaOf(ref: String) throws -> String {
