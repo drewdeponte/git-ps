@@ -392,7 +392,8 @@ public final class GitPatchStack {
 
         // checkout the new branch
         try self.git.checkout(ref: branchName)
-        print("- checked out \(branchName)")
+        let currentSha = try self.git.getShaOf(ref: branchName)
+        print("- checked out \(branchName) at \(currentSha)")
 
         do {
             print("- cherry picking commit - \(commitRef)")
