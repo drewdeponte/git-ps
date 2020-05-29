@@ -132,8 +132,10 @@ public class GitShell {
     }
 
     private let path: String
+    private let currentWorkingDirectory: String?
 
-    public init(bash: Bash, path: String? = nil) throws {
+    public init(bash: Bash, path: String? = nil, currentWorkingDirectory: String? = nil) throws {
+        self.currentWorkingDirectory = currentWorkingDirectory
         if let p = path {
             self.path = p
         } else {
@@ -152,7 +154,7 @@ public class GitShell {
             aditionalCommands.append("--max-count=\(maxCount)")
         }
 
-        let result = try run(self.path, arguments: ["--no-pager", "log", "--pretty=format:----GIT-CHANGELOG-COMMIT-BEGIN----%n%H%n%as%n%B"] + aditionalCommands)
+        let result = try run(self.path, arguments: ["--no-pager", "log", "--pretty=format:----GIT-CHANGELOG-COMMIT-BEGIN----%n%H%n%as%n%B"] + aditionalCommands, environment: nil, currentWorkingDirectory: self.currentWorkingDirectory)
         guard result.isSuccessful else { throw Error.gitLogFailure }
 
         if let output = result.standardOutput {
@@ -161,12 +163,8 @@ public class GitShell {
         return Commits(formattedGitLogOutput: "")
     }
 
-    public func commits(from fromRef: String, to toRef: String, repositoryPath: String? = nil) throws -> [CommitSummary] {
-        var cwd: String? = nil
-        if let repoPath = repositoryPath {
-            cwd = repoPath
-        }
-        let result = try run(self.path, arguments: ["log", "--pretty=%H %s", "\(fromRef)..\(toRef)"], environment: nil, currentWorkingDirectory: cwd)
+    public func commits(from fromRef: String, to toRef: String) throws -> [CommitSummary] {
+        let result = try run(self.path, arguments: ["log", "--pretty=%H %s", "\(fromRef)..\(toRef)"], environment: nil, currentWorkingDirectory: self.currentWorkingDirectory)
         guard result.isSuccessful else { throw Error.gitLogFailure }
 
         if let output = result.standardOutput {
