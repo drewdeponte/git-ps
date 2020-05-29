@@ -8,6 +8,9 @@ let package = Package(
     platforms: [
         SupportedPlatform.macOS(SupportedPlatform.MacOSVersion.v10_13)
     ],
+    products: [
+    	.library(name: "GitPatchStackCore", targets: ["GitPatchStackCore"])
+    ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
