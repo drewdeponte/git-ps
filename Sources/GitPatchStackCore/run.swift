@@ -1,6 +1,6 @@
 import Foundation
 
-public func run(_ fileURLWithPath: String, arguments: [String]) throws -> RunResult {
+public func run(_ fileURLWithPath: String, arguments: [String], environment: [String: String]? = nil) throws -> RunResult {
     let outputPipe = Pipe()
     var outputData = Data()
 
@@ -10,6 +10,7 @@ public func run(_ fileURLWithPath: String, arguments: [String]) throws -> RunRes
     let task = Process()
     task.executableURL = URL(fileURLWithPath: fileURLWithPath)
     task.arguments = arguments
+    task.environment = environment
     task.standardOutput = outputPipe
     task.standardError = errorPipe
 
