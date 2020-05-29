@@ -162,11 +162,11 @@ public class GitShell {
     }
 
     public func commits(from fromRef: String, to toRef: String, repositoryPath: String? = nil) throws -> [CommitSummary] {
-        var env: [String: String] = [:]
+        var cwd: String? = nil
         if let repoPath = repositoryPath {
-            env["PWD"] = repoPath
+            cwd = repoPath
         }
-        let result = try run(self.path, arguments: ["log", "--pretty=%H %s", "\(fromRef)..\(toRef)"], environment: env)
+        let result = try run(self.path, arguments: ["log", "--pretty=%H %s", "\(fromRef)..\(toRef)"], environment: nil, currentWorkingDirectory: cwd)
         guard result.isSuccessful else { throw Error.gitLogFailure }
 
         if let output = result.standardOutput {
