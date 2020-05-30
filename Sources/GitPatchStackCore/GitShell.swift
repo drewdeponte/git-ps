@@ -146,6 +146,7 @@ public class GitShell {
         case gitPushFailure
         case gitDeleteRemoteBranchFailure
         case gitMergeBaseFailure
+        case gitDiffFailure
     }
 
     private let path: String
@@ -196,6 +197,19 @@ public class GitShell {
             return Commits(formattedGitLogOutput: output)
         }
         return Commits(formattedGitLogOutput: "")
+    }
+
+    public func diffPatch(ref: String) throws -> String {
+        let result = try run(self.path, arguments: ["diff", "--no-color", "-p", ref], currentWorkingDirectory: self.currentWorkingDirectory)
+        guard result.isSuccessful == true else {
+            throw Error.gitDiffFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitDiffFailure
+        }
+
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     public func commits(from fromRef: String, to toRef: String) throws -> [CommitSummary] {
