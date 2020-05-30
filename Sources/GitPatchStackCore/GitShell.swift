@@ -1,8 +1,16 @@
 import Foundation
 
 public struct Commit {
-    public let sha: String
-    public let date: Date
+    public let hash: String
+    public let treeHash: String
+    public let parentHash: String
+    public let tags: [String]
+    public let committerDate: Date
+    public let committerName: String
+    public let committerEmail: String
+    public let authorDate: Date
+    public let authorName: String
+    public let authorEmail: String
     public let summary: String
     public let body: String?
 }
@@ -27,7 +35,7 @@ public struct Commits: Sequence {
 }
 
 public struct CommitsIterator: IteratorProtocol {
-    let commits: Commits
+
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = .current
@@ -37,6 +45,7 @@ public struct CommitsIterator: IteratorProtocol {
 
     private var previousRange: Range<String.Index>?
     private var isExhausted: Bool = false
+    private let commits: Commits
 
     init(_ commits: Commits) {
         self.commits = commits
@@ -47,62 +56,70 @@ public struct CommitsIterator: IteratorProtocol {
     }
 
     public mutating func next() -> Commit? {
-       guard !isExhausted else { return nil }
+        guard !isExhausted else { return nil }
 
-       var searchRange: Range<String.Index>?
-       if let prevRange = self.previousRange {
-           searchRange = prevRange.upperBound..<self.commits.formattedGitLogOutput.endIndex
-       } else {
-           searchRange = self.commits.formattedGitLogOutput.startIndex..<self.commits.formattedGitLogOutput.endIndex
-       }
+        var searchRange: Range<String.Index>?
+        if let prevRange = self.previousRange {
+            searchRange = prevRange.upperBound..<self.commits.formattedGitLogOutput.endIndex
+        } else {
+            searchRange = self.commits.formattedGitLogOutput.startIndex..<self.commits.formattedGitLogOutput.endIndex
+        }
 
-       if let range = self.commits.formattedGitLogOutput.range(of: "----GIT-CHANGELOG-COMMIT-BEGIN----\n", range: searchRange) {
-           if self.isFirstMatch() {
-               self.previousRange = range
-               return self.next()
-           } else {
-               // grab the content between the end of the previous range and the beginning of the new range
-               let contentRange: Range<String.Index> = self.previousRange!.upperBound..<range.lowerBound
+        if let range = self.commits.formattedGitLogOutput.range(of: "----GIT-CHANGELOG-COMMIT-BEGIN----\n", range: searchRange) {
+            if self.isFirstMatch() {
+                self.previousRange = range
+                return self.next()
+            } else {
+                // grab the content between the end of the previous range and the beginning of the new range
+                let contentRange: Range<String.Index> = self.previousRange!.upperBound..<range.lowerBound
+                let rawCommitContent = self.commits.formattedGitLogOutput[contentRange]
+                let lines = rawCommitContent.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\n")
+                self.previousRange = range
 
-               let rawCommitContent = self.commits.formattedGitLogOutput[contentRange]
+                var hasBody =  false
+                if lines.endIndex >= 12 {
+                    hasBody = true
+                }
 
-               let lines = rawCommitContent.trimmingCharacters(in: .whitespacesAndNewlines) .components(separatedBy: "\n")
+                return Commit(hash: lines[0], treeHash: lines[1], parentHash: lines[2], tags: self.extractTags(str: lines[3]), committerDate: dateFormatter.date(from: lines[4])!, committerName: lines[5], committerEmail: lines[6], authorDate: dateFormatter.date(from: lines[7])!, authorName: lines[8], authorEmail: lines[9], summary: lines[10], body: (hasBody ? lines[12..<lines.count].joined(separator: "\n") : nil))
+            }
+        } else { // should be the end of the content
+            if isFirstMatch() { return nil }
 
-               self.previousRange = range
+            self.isExhausted = true
+            let contentRange: Range<String.Index> = self.previousRange!.upperBound..<self.commits.formattedGitLogOutput.endIndex
+            let rawCommitContent = self.commits.formattedGitLogOutput[contentRange]
+            let lines = rawCommitContent.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\n")
 
-               var hasBody =  false
-               if lines.endIndex >= 4 {
-                   hasBody = true
-               }
+            self.previousRange = nil
+            self.isExhausted = true
 
-               return Commit(sha: lines[0], date: dateFormatter.date(from: lines[1])!, summary: lines[2], body: (hasBody ? lines[4..<lines.count].joined(separator: "\n") : nil))
-           }
-       } else { // should be the end of the content
-           if isFirstMatch() {
-               return nil
-           }
+            var hasBody =  false
+            if lines.endIndex >= 12 {
+                hasBody = true
+            }
 
-           self.isExhausted = true
+            return Commit(hash: lines[0], treeHash: lines[1], parentHash: lines[2], tags: self.extractTags(str: lines[3]), committerDate: dateFormatter.date(from: lines[4])!, committerName: lines[5], committerEmail: lines[6], authorDate: dateFormatter.date(from: lines[7])!, authorName: lines[8], authorEmail: lines[9], summary: lines[10], body: (hasBody ? lines[12..<lines.count].joined(separator: "\n") : nil))
+        }
+    }
 
-           let contentRange: Range<String.Index> = self.previousRange!.upperBound..<self.commits.formattedGitLogOutput.endIndex
+    private func extractTags(str: String) -> [String] {
+        let cleansedStr = str.replacingOccurrences(of: " (", with: "").replacingOccurrences(of: ")", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
 
-           let rawCommitContent = self.commits.formattedGitLogOutput[contentRange]
-
-           let lines = rawCommitContent.trimmingCharacters(in: .whitespacesAndNewlines) .components(separatedBy: "\n")
-
-           self.previousRange = nil
-           self.isExhausted = true
-
-           var hasBody =  false
-           if lines.endIndex >= 4 {
-               hasBody = true
-           }
-
-           return Commit(sha: lines[0], date: dateFormatter.date(from: lines[1])!, summary: lines[2], body: (hasBody ? lines[4..<lines.count].joined(separator: "\n") : nil))
-       }
+        var tags: [String] = []
+        cleansedStr.split(separator: ",").forEach { item in
+            let cleansedItem = item.trimmingCharacters(in: .whitespacesAndNewlines)
+            if cleansedItem.count > 5 {
+                if cleansedItem.prefix(5) == "tag: " { // we have a tag
+                    let tagValueStartIndex = cleansedItem.index(cleansedItem.startIndex, offsetBy: 5, limitedBy: cleansedItem.endIndex)!
+                    let tagVal = String(cleansedItem[tagValueStartIndex..<cleansedItem.endIndex])
+                    tags.append(tagVal)
+                }
+            }
+        }
+        return tags
     }
 }
-
 
 public class GitShell {
     public enum Error: Swift.Error {
@@ -154,7 +171,25 @@ public class GitShell {
             aditionalCommands.append("--max-count=\(maxCount)")
         }
 
-        let result = try run(self.path, arguments: ["--no-pager", "log", "--pretty=format:----GIT-CHANGELOG-COMMIT-BEGIN----%n%H%n%as%n%B"] + aditionalCommands, environment: nil, currentWorkingDirectory: self.currentWorkingDirectory)
+        let result = try run(self.path, arguments: ["--no-pager", "log", "--date=short", "--pretty=format:----GIT-CHANGELOG-COMMIT-BEGIN----%n%H%n%T%n%P%n%d%n%cd%n%cn%n%ce%n%ad%n%an%n%ae%n%B"] + aditionalCommands, environment: nil, currentWorkingDirectory: self.currentWorkingDirectory)
+        // ----GIT-CHANGELOG-COMMIT-BEGIN----
+        // %H - commit hash
+
+        // %T - tree hash
+        // %P - parent hash
+
+        // %d - ref names (aka tags)
+        // %cd - committer date
+
+        // %cn - committer name
+        // %ce - committer email
+
+        // %ad - author date
+        // %an - author name
+        // %ae - author email
+
+        // %B - raw body (unwrapped subject and body)
+
         guard result.isSuccessful else { throw Error.gitLogFailure }
 
         if let output = result.standardOutput {
