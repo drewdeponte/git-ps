@@ -200,7 +200,7 @@ public class GitShell {
     }
 
     public func diffPatch(ref: String) throws -> String {
-        let result = try run(self.path, arguments: ["diff", "--no-color", "-p", ref], currentWorkingDirectory: self.currentWorkingDirectory)
+        let result = try run(self.path, arguments: ["diff", "--no-color", "-p", "\(ref)^", ref], currentWorkingDirectory: self.currentWorkingDirectory)
         guard result.isSuccessful == true else {
             throw Error.gitDiffFailure
         }
