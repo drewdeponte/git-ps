@@ -167,6 +167,8 @@ public class GitShell {
             aditionalCommands.append("\(fromRef)..\(toRef)")
         } else if let fromRef = fromRef {
             aditionalCommands.append("\(fromRef)..HEAD")
+        } else if let toRef = toRef {
+            aditionalCommands.append("\(toRef)")
         }
         if let maxCount = maxCount {
             aditionalCommands.append("--max-count=\(maxCount)")
