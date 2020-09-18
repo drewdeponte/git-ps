@@ -10,7 +10,11 @@ public func run(_ fileURLWithPath: String, arguments: [String], environment: [St
     let task = Process()
     task.executableURL = URL(fileURLWithPath: fileURLWithPath)
     task.arguments = arguments
-    task.environment = environment
+    if let env = environment {
+        task.environment = ProcessInfo.processInfo.environment.merging(env) { (_, new) in new }
+    } else {
+        task.environment = ProcessInfo.processInfo.environment
+    }
     if let cwd = currentWorkingDirectory {
         task.currentDirectoryPath = cwd
     }
