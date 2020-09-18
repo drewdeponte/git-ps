@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - now
 
+## [0.4.0] - 2020-09-18
+### Added
+- explicit branch name & base branch options to the pub command
+
 ## [0.3.4] - 2020-09-18
 
 ### Fixed
@@ -86,4 +90,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.3.2]: https://github.com/uptech/git-ps/compare/0.3.1...0.3.2
 [v0.3.3]: https://github.com/uptech/git-ps/compare/0.3.2...0.3.3
 [v0.3.4]: https://github.com/uptech/git-ps/compare/0.3.3...0.3.4
-[Unreleased]: https://github.com/uptech/git-ps/compare/0.3.4...HEAD
+[v0.4.0]: https://github.com/uptech/git-ps/compare/0.3.4...0.4.0
+[Unreleased]: https://github.com/uptech/git-ps/compare/0.4.0...HEAD
