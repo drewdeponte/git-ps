@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - now
 
+## [0.3.4] - 2020-09-18
+
+### Fixed
+- bug preventing git cmds that used gitconfig from working on some systems
+
 ## [0.3.3] - 2020-09-10
 
 ### Added
@@ -80,4 +85,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.3.1]: https://github.com/uptech/git-ps/compare/0.3.0...0.3.1
 [v0.3.2]: https://github.com/uptech/git-ps/compare/0.3.1...0.3.2
 [v0.3.3]: https://github.com/uptech/git-ps/compare/0.3.2...0.3.3
-[Unreleased]: https://github.com/uptech/git-ps/compare/0.3.3...HEAD
+[v0.3.4]: https://github.com/uptech/git-ps/compare/0.3.3...0.3.4
+[Unreleased]: https://github.com/uptech/git-ps/compare/0.3.4...HEAD
