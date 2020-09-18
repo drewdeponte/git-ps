@@ -90,22 +90,47 @@ public final class GitPatchStack {
                 print("Note: Run 'git-ps ls' to see the current patches an their index values")
             }
         case "pub":
-            if self.arguments.count == 3 { // git-ps pub <patch-index>
-                if let index = Int(self.arguments[2]) {
-                    try self.publish(patchIndex: index)
+            let subCommandArgs = self.arguments[2...]
+
+            var explicitBranch: String? = nil
+            var explicitBaseBranch: String? = nil
+            var force: Bool = false
+            var patchIndex: Int? = nil
+
+            var lookingForOptionValue = false
+            var mostRecentlyIdentifiedOption = ""
+            for arg in subCommandArgs {
+                if lookingForOptionValue {
+                    if mostRecentlyIdentifiedOption == "-n" {
+                        explicitBranch = arg
+                        lookingForOptionValue = false
+                    } else if mostRecentlyIdentifiedOption == "-b" {
+                        explicitBaseBranch = arg
+                        lookingForOptionValue = false
+                    }
                 } else {
-                    print("Usage: git-ps pub [-f] <patch-index>")
-                    print("Note: Run 'git-ps ls' to see the current patches an their index values")
+                    if arg == "-f" {
+                        mostRecentlyIdentifiedOption = "-n"
+                        lookingForOptionValue = false
+                        force = true
+                    } else if arg == "-n" {
+                        mostRecentlyIdentifiedOption = "-n"
+                        lookingForOptionValue = true
+                    } else if arg == "-b" {
+                        mostRecentlyIdentifiedOption = "-b"
+                        lookingForOptionValue = true
+                    } else {
+                        patchIndex = Int(arg)
+                        mostRecentlyIdentifiedOption = ""
+                        lookingForOptionValue = false
+                    }
                 }
-            } else if self.arguments.count == 4 { // git-ps pub -f <patch-index>
-                if let index = Int(self.arguments[3]), self.arguments[2] == "-f"  {
-                    try self.publish(patchIndex: index, force: true)
-                } else {
-                    print("Usage: git-ps pub [-f] <patch-index>")
-                    print("Note: Run 'git-ps ls' to see the current patches an their index values")
-                }
+            }
+
+            if let patchIdx = patchIndex {
+                try self.publish(patchIndex: patchIdx, force: force, reviewBranchName: explicitBranch, explicitBaseBranch: explicitBaseBranch)
             } else {
-                print("Usage: git-ps pub [-f] <patch-index>")
+                print("Usage: git-ps pub [-f] <patch-index> [-n <branch-name>] [-b <base-branch>]")
                 print("Note: Run 'git-ps ls' to see the current patches an their index values")
             }
         case "--version":
@@ -270,7 +295,7 @@ public final class GitPatchStack {
         }
     }
 
-    public func publish(patchIndex: Int, force: Bool = false) throws {
+    public func publish(patchIndex: Int, force: Bool = false, reviewBranchName: String? = nil, explicitBaseBranch: String? = nil) throws {
         guard let dotGitDirURL = try self.git.findDotGit() else {
             print("Error: doesn't seem like you are in a git repository")
             return
@@ -303,25 +328,40 @@ public final class GitPatchStack {
             var rrTmpBranch: String?
             if let rrRecord = rrRepository.fetch(uuid) {
                 print("- found record in request review state repository for id - \(uuid.uuidString)")
-                rrTmpBranch = rrRecord.branchName
-                print("- using branch name from request review state repository record - \(rrTmpBranch!)")
+                if let explicitBranchName = reviewBranchName {
+                    print("- explicit review branch name provided - \(explicitBranchName)")
+                    print("- ignored previously stored branch name in favor of explicit review branch name")
+                    rrTmpBranch = explicitBranchName
+                } else {
+                    rrTmpBranch = rrRecord.branchName
+                    print("- using branch name from request review state repository record - \(rrTmpBranch!)")
+                }
             } else { // dealing with a commit with a patch stack id but no record
                 print("- failed to find record in request review state repository for id - \(uuid.uuidString)")
-                rrTmpBranch = "ps/rr/\(self.slug(patch: patch))"
-                print("- generated slug based branch name - \(rrTmpBranch!)")
+                if let explicitBranchName = reviewBranchName {
+                    print("- explicit review branch name provided - \(explicitBranchName)")
+                    rrTmpBranch = explicitBranchName
+                } else {
+                    rrTmpBranch = "ps/rr/\(self.slug(patch: patch))"
+                    print("- generated slug based branch name - \(rrTmpBranch!)")
+                }
             }
 
             guard let rrBranch = rrTmpBranch else {
                 return
             }
 
-            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
+            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch, explicitRemoteBase: explicitBaseBranch)
 
             // push branch up to remote
             try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
             print("- force pushed \(rrBranch) up to \(self.remote)")
 
-            try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
+            if let alternateBaseBranch = explicitBaseBranch {
+                try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: alternateBaseBranch)
+            } else {
+                try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
+            }
 
             let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: true)
             try rrRepository.record(record)
@@ -342,15 +382,30 @@ public final class GitPatchStack {
                 let newPatch = try self.addIdTo(uuid: newPatchID, patch: patch)
 
                 // generate branch name
-                let rrBranch = "ps/rr/\(self.slug(patch: patch))"
+                var rrTmpBranch: String?
+                if let explicitBranchName = reviewBranchName {
+                    print("- explicit review branch name provided - \(explicitBranchName)")
+                    rrTmpBranch = explicitBranchName
+                } else {
+                    rrTmpBranch = "ps/rr/\(self.slug(patch: patch))"
+                    print("- generated slug based branch name - \(rrTmpBranch!)")
+                }
 
-                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
+                guard let rrBranch = rrTmpBranch else {
+                    return
+                }
+
+                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch, explicitRemoteBase: explicitBaseBranch)
 
                 // push branch up to remote
                 try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
                 print("- force pushed \(rrBranch) up to \(self.remote)")
 
-                try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
+                if let alternateBaseBranch = explicitBaseBranch {
+                    try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: alternateBaseBranch)
+                } else {
+                    try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
+                }
 
                 let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: true)
                 try rrRepository.record(record)
