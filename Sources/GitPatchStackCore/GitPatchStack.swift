@@ -15,19 +15,11 @@ public final class GitPatchStack {
     }
 
     private let arguments: [String]
-    private let remote: String
-    private let baseBranch: String
 
     private let git: GitShell
 
-    private var remoteBase: String {
-        return "\(self.remote)/\(self.baseBranch)"
-    }
-
-    public init(arguments: [String] = CommandLine.arguments, remote: String = "origin", baseBranch: String = "master") throws {
+    public init(arguments: [String] = CommandLine.arguments) throws {
         self.arguments = arguments
-        self.remote = remote
-        self.baseBranch = baseBranch
         self.git = try GitShell(bash: Bash())
     }
 
@@ -57,44 +49,9 @@ public final class GitPatchStack {
         case "rebase":
             try self.rebase()
         case "rr":
-            guard self.arguments.count >= 3 && self.arguments.count <= 7 else {
-                throw Error.invalidArgumentCount
-            }
-
-            if let index = Int(self.arguments[2]) {
-                if self.arguments.count == 5 {
-                    if self.arguments[3] == "-n" {
-                        try self.requestReview(patchIndex: index, reviewBranchName: self.arguments[4])
-                    } else if self.arguments[3] == "-b" {
-                        try self.requestReview(patchIndex: index, explicitBaseBranch: self.arguments[4])
-                    }
-                } else if self.arguments.count == 7 {
-                    if self.arguments[3] == "-n" {
-                        if self.arguments[5] == "-b" {
-                            try self.requestReview(patchIndex: index, reviewBranchName: self.arguments[4], explicitBaseBranch: self.arguments[6])
-                        } else {
-                            throw Error.invalidArgumentCount
-                        }
-                    } else if self.arguments[3] == "-b" {
-                        if self.arguments[5] == "-n" {
-                            try self.requestReview(patchIndex: index, reviewBranchName: self.arguments[6], explicitBaseBranch: self.arguments[4])
-                        } else {
-                            throw Error.invalidArgumentCount
-                        }
-                    }
-                } else {
-                    try self.requestReview(patchIndex: index)
-                }
-            } else {
-                print("Usage: git-ps rr <patch-index> [-n <branch-name>] [-b <base-branch>]")
-                print("Note: Run 'git-ps ls' to see the current patches an their index values")
-            }
-        case "pub":
             let subCommandArgs = self.arguments[2...]
 
             var explicitBranch: String? = nil
-            var explicitBaseBranch: String? = nil
-            var force: Bool = false
             var patchIndex: Int? = nil
 
             var lookingForOptionValue = false
@@ -104,20 +61,10 @@ public final class GitPatchStack {
                     if mostRecentlyIdentifiedOption == "-n" {
                         explicitBranch = arg
                         lookingForOptionValue = false
-                    } else if mostRecentlyIdentifiedOption == "-b" {
-                        explicitBaseBranch = arg
-                        lookingForOptionValue = false
                     }
                 } else {
-                    if arg == "-f" {
+                    if arg == "-n" {
                         mostRecentlyIdentifiedOption = "-n"
-                        lookingForOptionValue = false
-                        force = true
-                    } else if arg == "-n" {
-                        mostRecentlyIdentifiedOption = "-n"
-                        lookingForOptionValue = true
-                    } else if arg == "-b" {
-                        mostRecentlyIdentifiedOption = "-b"
                         lookingForOptionValue = true
                     } else {
                         patchIndex = Int(arg)
@@ -128,9 +75,46 @@ public final class GitPatchStack {
             }
 
             if let patchIdx = patchIndex {
-                try self.publish(patchIndex: patchIdx, force: force, reviewBranchName: explicitBranch, explicitBaseBranch: explicitBaseBranch)
+                try self.requestReview(patchIndex: patchIdx, reviewBranchName: explicitBranch)
             } else {
-                print("Usage: git-ps pub [-f] <patch-index> [-n <branch-name>] [-b <base-branch>]")
+                print("Usage: git-ps rr <patch-index> [-n <branch-name>]")
+                print("Note: Run 'git-ps ls' to see the current patches an their index values")
+            }
+        case "pub":
+            let subCommandArgs = self.arguments[2...]
+
+            var explicitBranch: String? = nil
+            var force: Bool = false
+            var patchIndex: Int? = nil
+
+            var lookingForOptionValue = false
+            var mostRecentlyIdentifiedOption = ""
+            for arg in subCommandArgs {
+                if lookingForOptionValue {
+                    if mostRecentlyIdentifiedOption == "-n" {
+                        explicitBranch = arg
+                        lookingForOptionValue = false
+                    }
+                } else {
+                    if arg == "-f" {
+                        mostRecentlyIdentifiedOption = "-n"
+                        lookingForOptionValue = false
+                        force = true
+                    } else if arg == "-n" {
+                        mostRecentlyIdentifiedOption = "-n"
+                        lookingForOptionValue = true
+                    } else {
+                        patchIndex = Int(arg)
+                        mostRecentlyIdentifiedOption = ""
+                        lookingForOptionValue = false
+                    }
+                }
+            }
+
+            if let patchIdx = patchIndex {
+                try self.publish(patchIndex: patchIdx, force: force, reviewBranchName: explicitBranch)
+            } else {
+                print("Usage: git-ps pub [-f] <patch-index> [-n <branch-name>]")
                 print("Note: Run 'git-ps ls' to see the current patches an their index values")
             }
         case "--version":
@@ -180,17 +164,22 @@ public final class GitPatchStack {
 
         let rrRepository = try RequestReviewRepository(dirURL: dotGitDirURL)
 
-        try self.git.fetch(remote: self.remote, branch: self.baseBranch)
-        try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch)
+        let currentBranch = try self.git.getCheckedOutBranch()
+        let upstreamBranch = try self.git.getUpstreamBranch()
+
+        try self.git.fetch(remote: upstreamBranch.remote, branch: upstreamBranch.branch)
+        try self.git.rebase(onto: upstreamBranch.remoteBase, from: upstreamBranch.remoteBase, to: currentBranch)
 
         try self.cleanse(requestReviewRepository: rrRepository)
     }
 
     public func rebase() throws {
-        try self.git.rebase(onto: self.remoteBase, from: self.remoteBase, to: self.baseBranch, interactive: true)
+        let currentBranch = try self.git.getCheckedOutBranch()
+        let upstreamBranch = try self.git.getUpstreamBranch()
+        try self.git.rebase(onto: upstreamBranch.remoteBase, from: upstreamBranch.remoteBase, to: currentBranch, interactive: true)
     }
 
-    public func requestReview(patchIndex: Int, reviewBranchName: String? = nil, explicitBaseBranch: String? = nil) throws {
+    public func requestReview(patchIndex: Int, reviewBranchName: String? = nil) throws {
         guard let dotGitDirURL = try self.git.findDotGit() else {
             print("Error: doesn't seem like you are in a git repository")
             return
@@ -215,6 +204,8 @@ public final class GitPatchStack {
 
         let originalBranch = try self.git.getCheckedOutBranch()
         print("- identified originating branch - \(originalBranch)")
+
+        let upstreamBranch = try self.git.getUpstreamBranch()
 
         if let uuid = try self.getId(patch: patch) {
             print("- parsed patch id (\(uuid.uuidString)) out of commit description")
@@ -250,11 +241,11 @@ public final class GitPatchStack {
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
-            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch, explicitRemoteBase: explicitBaseBranch)
+            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
 
             // push branch up to remote
-            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote, displayOutput: true)
-            print("- force pushed \(rrBranch) up to \(self.remote)")
+            try self.git.forcePush(branch: rrBranch, upToRemote: upstreamBranch.remote, displayOutput: true)
+            print("- force pushed \(rrBranch) up to \(upstreamBranch.remote)")
 
             // checkout original branch
             try self.git.checkout(ref: originalBranch)
@@ -283,11 +274,11 @@ public final class GitPatchStack {
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
-            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch, explicitRemoteBase: explicitBaseBranch)
+            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
 
             // push branch up to remote
-            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote, displayOutput: true)
-            print("- force pushed \(rrBranch) up to \(self.remote)")
+            try self.git.forcePush(branch: rrBranch, upToRemote: upstreamBranch.remote, displayOutput: true)
+            print("- force pushed \(rrBranch) up to \(upstreamBranch.remote)")
 
             // checkout original branch
             try self.git.checkout(ref: originalBranch)
@@ -295,7 +286,7 @@ public final class GitPatchStack {
         }
     }
 
-    public func publish(patchIndex: Int, force: Bool = false, reviewBranchName: String? = nil, explicitBaseBranch: String? = nil) throws {
+    public func publish(patchIndex: Int, force: Bool = false, reviewBranchName: String? = nil) throws {
         guard let dotGitDirURL = try self.git.findDotGit() else {
             print("Error: doesn't seem like you are in a git repository")
             return
@@ -320,6 +311,8 @@ public final class GitPatchStack {
 
         let originalBranch = try self.git.getCheckedOutBranch()
         print("- identified originating branch - \(originalBranch)")
+
+        let upstreamBranch = try self.git.getUpstreamBranch()
 
         if let uuid = try self.getId(patch: patch) {
             print("- parsed patch id (\(uuid.uuidString)) out of commit description")
@@ -351,17 +344,13 @@ public final class GitPatchStack {
                 return
             }
 
-            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch, explicitRemoteBase: explicitBaseBranch)
+            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
 
             // push branch up to remote
-            try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
-            print("- force pushed \(rrBranch) up to \(self.remote)")
+            try self.git.forcePush(branch: rrBranch, upToRemote: upstreamBranch.remote)
+            print("- force pushed \(rrBranch) up to \(upstreamBranch.remote)")
 
-            if let alternateBaseBranch = explicitBaseBranch {
-                try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: alternateBaseBranch)
-            } else {
-                try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
-            }
+            try self.git.push(localBranch: rrBranch, upToRemote: upstreamBranch.remote, remoteBranch: upstreamBranch.branch)
 
             let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: true)
             try rrRepository.record(record)
@@ -371,7 +360,7 @@ public final class GitPatchStack {
             try self.git.checkout(ref: originalBranch)
             print("- checked out \(originalBranch) so you are where you started")
 
-            try self.git.deleteRemoteBranch(named: rrBranch, remote: self.remote)
+            try self.git.deleteRemoteBranch(named: rrBranch, remote: upstreamBranch.remote)
 
             try self.git.deleteBranch(named: rrBranch)
         } else {
@@ -395,17 +384,13 @@ public final class GitPatchStack {
                     return
                 }
 
-                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch, explicitRemoteBase: explicitBaseBranch)
+                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
 
                 // push branch up to remote
-                try self.git.forcePush(branch: rrBranch, upToRemote: self.remote)
-                print("- force pushed \(rrBranch) up to \(self.remote)")
+                try self.git.forcePush(branch: rrBranch, upToRemote: upstreamBranch.remote)
+                print("- force pushed \(rrBranch) up to \(upstreamBranch.remote)")
 
-                if let alternateBaseBranch = explicitBaseBranch {
-                    try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: alternateBaseBranch)
-                } else {
-                    try self.git.push(localBranch: rrBranch, upToRemote: self.remote, remoteBranch: self.baseBranch)
-                }
+                try self.git.push(localBranch: rrBranch, upToRemote: upstreamBranch.remote, remoteBranch: upstreamBranch.branch)
 
                 let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: true)
                 try rrRepository.record(record)
@@ -415,7 +400,7 @@ public final class GitPatchStack {
                 try self.git.checkout(ref: originalBranch)
                 print("- checked out \(originalBranch) so you are where you started")
 
-                try self.git.deleteRemoteBranch(named: rrBranch, remote: self.remote)
+                try self.git.deleteRemoteBranch(named: rrBranch, remote: upstreamBranch.remote)
 
                 try self.git.deleteBranch(named: rrBranch)
             } else {
@@ -425,7 +410,10 @@ public final class GitPatchStack {
     }
 
     private func patchStack() throws -> [CommitSummary] {
-        let patches = try git.commits(from: self.remoteBase, to: self.baseBranch)
+        let currentBranch = try self.git.getCheckedOutBranch()
+        let upstreamBranch = try self.git.getUpstreamBranch()
+
+        let patches = try git.commits(from: upstreamBranch.remoteBase, to: currentBranch)
         return patches.reversed() // reverse so indexing is 0 closest to origin, u
     }
 
@@ -437,7 +425,8 @@ public final class GitPatchStack {
 
     private func addIdTo(uuid: UUID, patch: CommitSummary) throws -> CommitSummary {
         let originalBranch = try self.git.getCheckedOutBranch()
-        let commonAncestorRef = try self.git.mergeBase(refA: patch.sha, refB: self.remoteBase)
+        let upstreamBranch = try self.git.getUpstreamBranch()
+        let commonAncestorRef = try self.git.mergeBase(refA: patch.sha, refB: upstreamBranch.remoteBase)
         try self.git.createAndCheckout(branch: "ps/tmp/add_id_rework", startingFrom: commonAncestorRef)
         try self.git.cherryPickCommits(from: commonAncestorRef, to: patch.sha)
         let shaOfPatchPrime = try self.git.getShaOf(ref: "HEAD")
@@ -448,9 +437,9 @@ public final class GitPatchStack {
         print("- amended patch' wich ps-id: \(uuid.uuidString), it is now patch''")
         let shaOfPatchFinalPrime = try self.git.getShaOf(ref: "HEAD")
         print("- got sha of HEAD (a.k.a. patch'' - \(shaOfPatchFinalPrime)")
-        try self.git.cherryPickCommits(from: patch.sha, to: self.baseBranch)
-        try self.git.forceBranch(named: self.baseBranch, to: "HEAD")
-        print("- forced branch (\(self.baseBranch)) to point to HEAD")
+        try self.git.cherryPickCommits(from: patch.sha, to: upstreamBranch.branch)
+        try self.git.forceBranch(named: upstreamBranch.branch, to: "HEAD")
+        print("- forced branch (\(upstreamBranch.branch)) to point to HEAD")
         try self.git.checkout(ref: originalBranch)
         print("- checked out branch - \(originalBranch)")
         try self.git.deleteBranch(named: "ps/tmp/add_id_rework")
@@ -480,17 +469,18 @@ public final class GitPatchStack {
         return patch.summary.replaceCharactersFromSet(characterSet: CharacterSet.alphanumerics.inverted, replacementString: "_").lowercased()
     }
 
-    private func createOrUpdateRequestReviewBranch(named branchName: String, withCommit commitRef: String, fallbackBranchName: String, explicitRemoteBase: String? = nil) throws {
+    private func createOrUpdateRequestReviewBranch(named branchName: String, withCommit commitRef: String, fallbackBranchName: String) throws {
 
-        let remoteBaseBranch = explicitRemoteBase ?? self.baseBranch
+        let upstreamBranch = try self.git.getUpstreamBranch()
+        print("- found upstream branch - \(upstreamBranch.remoteBase)")
 
         // Do this so that we are always creating PR branches on top of the latest remote baseBranch
-        try self.git.fetch(remote: self.remote, branch: remoteBaseBranch)
-        print("- fetched \(remoteBaseBranch)")
+        try self.git.fetch(remote: upstreamBranch.remote, branch: upstreamBranch.branch)
+        print("- fetched \(upstreamBranch.branch)")
 
         // create the new request review branch on remote base
-        try self.git.createBranch(named: branchName, on: "\(self.remote)/\(remoteBaseBranch)")
-        print("- created branch (\(branchName)) on (\(self.remote)/\(remoteBaseBranch))")
+        try self.git.createBranch(named: branchName, on: upstreamBranch.remoteBase)
+        print("- created branch (\(branchName)) on (\(upstreamBranch.remoteBase))")
 
         // checkout the new branch
         try self.git.checkout(ref: branchName)
@@ -503,7 +493,7 @@ public final class GitPatchStack {
             let branchSha = try self.git.getRevParse(ref: branchName)
             print("- successfully cherry picked commit - \(commitRef) to \(branchSha)")
         } catch GitShell.Error.gitCherryPickFailure {
-            print("Looks like you are trying to request review of a patch that conflicts with \(remoteBaseBranch). It could be that it is dependent on another patch that is NOT currently in \(remoteBaseBranch) or just be conflicting with recent changes to \(remoteBaseBranch).  Dependent patches MUST be in \(remoteBaseBranch) before requesting review of patches that depend on them.\n")
+            print("Looks like you are trying to request review of a patch that conflicts with \(upstreamBranch.branch). It could be that it is dependent on another patch that is NOT currently in \(upstreamBranch.branch) or just be conflicting with recent changes to \(upstreamBranch.branch).  Dependent patches MUST be in \(upstreamBranch.branch) before requesting review of patches that depend on them.\n")
 
             // cherry pick abort
             try self.git.cherryPickAbort()
@@ -583,7 +573,7 @@ public final class GitPatchStack {
               ls             List the stack of patches
               show <i>       Show the patch diff and details
               pull           Fetch the state of origin/master and rebase the stack of patches onto it
-              reabase        Interactive rebase the stack of patches
+              rebase         Interactive rebase the stack of patches
               rr <i>         Request review of the patch or update existing request to review
               pub <i>        Publish a patch into upstream's mainline (aka origin/master)
               --version      Output the version of information for reference & bug reporting

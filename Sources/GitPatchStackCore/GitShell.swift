@@ -121,6 +121,14 @@ public struct CommitsIterator: IteratorProtocol {
     }
 }
 
+public struct UpstreamBranch {
+    public let remote: String
+    public let branch: String
+    public var remoteBase: String {
+        get { "\(remote)/\(branch)" }
+    }
+}
+
 public class GitShell {
     public enum Error: Swift.Error {
         case gitLogFailure
@@ -147,6 +155,7 @@ public class GitShell {
         case gitDeleteRemoteBranchFailure
         case gitMergeBaseFailure
         case gitDiffFailure
+        case gitUpstreamBranchFailure
     }
 
     private let path: String
@@ -355,6 +364,20 @@ public class GitShell {
         }
 
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func getUpstreamBranch() throws -> UpstreamBranch {
+        let result = try run(self.path, arguments: ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"])
+        guard result.isSuccessful == true else {
+            throw Error.gitUpstreamBranchFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitUpstreamBranchFailure
+        }
+
+        let parts = output.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "/")
+        return UpstreamBranch(remote: String(parts[0]), branch: String(parts[1]))
     }
 
     public func getShaOf(ref: String) throws -> String {
