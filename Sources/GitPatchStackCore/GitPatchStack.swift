@@ -85,6 +85,7 @@ public final class GitPatchStack {
 
             var explicitBranch: String? = nil
             var force: Bool = false
+            var keepRemoteBranch: Bool = false
             var patchIndex: Int? = nil
 
             var lookingForOptionValue = false
@@ -100,6 +101,10 @@ public final class GitPatchStack {
                         mostRecentlyIdentifiedOption = "-f"
                         lookingForOptionValue = false
                         force = true
+                    } else if arg == "-k" {
+                        mostRecentlyIdentifiedOption = "-k"
+                        lookingForOptionValue = false
+                        keepRemoteBranch = true
                     } else if arg == "-n" {
                         mostRecentlyIdentifiedOption = "-n"
                         lookingForOptionValue = true
@@ -112,7 +117,7 @@ public final class GitPatchStack {
             }
 
             if let patchIdx = patchIndex {
-                try self.publish(patchIndex: patchIdx, force: force, reviewBranchName: explicitBranch)
+                try self.publish(patchIndex: patchIdx, force: force, reviewBranchName: explicitBranch, keepRemoteBranch: keepRemoteBranch)
             } else {
                 print("Usage: git-ps pub [-f] <patch-index> [-n <branch-name>]")
                 print("Note: Run 'git-ps ls' to see the current patches an their index values")
@@ -286,7 +291,7 @@ public final class GitPatchStack {
         }
     }
 
-    public func publish(patchIndex: Int, force: Bool = false, reviewBranchName: String? = nil) throws {
+    public func publish(patchIndex: Int, force: Bool = false, reviewBranchName: String? = nil, keepRemoteBranch: Bool = false) throws {
         guard let dotGitDirURL = try self.git.findDotGit() else {
             print("Error: doesn't seem like you are in a git repository")
             return
@@ -360,7 +365,9 @@ public final class GitPatchStack {
             try self.git.checkout(ref: originalBranch)
             print("- checked out \(originalBranch) so you are where you started")
 
-            try self.git.deleteRemoteBranch(named: rrBranch, remote: upstreamBranch.remote)
+            if !keepRemoteBranch {
+                try self.git.deleteRemoteBranch(named: rrBranch, remote: upstreamBranch.remote)
+            }
 
             try self.git.deleteBranch(named: rrBranch)
         } else {
@@ -400,7 +407,9 @@ public final class GitPatchStack {
                 try self.git.checkout(ref: originalBranch)
                 print("- checked out \(originalBranch) so you are where you started")
 
-                try self.git.deleteRemoteBranch(named: rrBranch, remote: upstreamBranch.remote)
+                if !keepRemoteBranch {
+                    try self.git.deleteRemoteBranch(named: rrBranch, remote: upstreamBranch.remote)
+                }
 
                 try self.git.deleteBranch(named: rrBranch)
             } else {
