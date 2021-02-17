@@ -97,7 +97,7 @@ public final class GitPatchStack {
                     }
                 } else {
                     if arg == "-f" {
-                        mostRecentlyIdentifiedOption = "-n"
+                        mostRecentlyIdentifiedOption = "-f"
                         lookingForOptionValue = false
                         force = true
                     } else if arg == "-n" {
