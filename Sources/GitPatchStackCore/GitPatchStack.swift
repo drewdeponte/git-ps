@@ -584,7 +584,7 @@ public final class GitPatchStack {
               pull           Fetch the state of origin/master and rebase the stack of patches onto it
               rebase         Interactive rebase the stack of patches
               rr <i>         Request review of the patch or update existing request to review
-              pub <i>        Publish a patch into upstream's mainline (aka origin/master)
+              pub <i>        Publish a patch into upstream's stack base (e.g. origin/main)
               --version      Output the version of information for reference & bug reporting
               --help, -h     Show help information
 
@@ -596,7 +596,7 @@ public final class GitPatchStack {
                     Has NOT requested a review (AKA Empty)
               rr    Requested a review and it's unchanged since requesting
               rr+   Requested a review and it has changed since requesting
-              p     Commit has been published to origin/master
+              p     Commit has been published to upstream's stack base (e.g. origin/main)
             """
         print(text)
     }
