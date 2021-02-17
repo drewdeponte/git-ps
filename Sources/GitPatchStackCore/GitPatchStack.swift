@@ -119,7 +119,7 @@ public final class GitPatchStack {
             if let patchIdx = patchIndex {
                 try self.publish(patchIndex: patchIdx, force: force, reviewBranchName: explicitBranch, keepRemoteBranch: keepRemoteBranch)
             } else {
-                print("Usage: git-ps pub [-f] <patch-index> [-n <branch-name>]")
+                print("Usage: git-ps pub [-f] [-k] <patch-index> [-n <branch-name>]")
                 print("Note: Run 'git-ps ls' to see the current patches an their index values")
             }
         case "--version":
