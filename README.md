@@ -179,6 +179,14 @@ design & development agency & consultancy.
 We love open source software. See [our other projects][community] or
 [hire us][hire] to design, develop, and grow your product.
 
+I make some incomplete change to the UI
+
+Make change to some middle layer
+
+Make inner most change (has no dependencies)
+
+Make some more logical changes
+
 [Git]: https://git-scm.com
 [GNU make]: https://www.gnu.org/software/make/
 [community]: https://github.com/uptech
