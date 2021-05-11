@@ -2,6 +2,24 @@
   "object": {
     "pins": [
       {
+        "package": "Functional",
+        "repositoryURL": "https://github.com/uptech/Functional.git",
+        "state": {
+          "branch": null,
+          "revision": "2a709b5ef2bb13eb832e5af66284b68d613f713e",
+          "version": "0.2.0"
+        }
+      },
+      {
+        "package": "FunctionalParserKit",
+        "repositoryURL": "https://github.com/uptech/FunctionalParserKit.git",
+        "state": {
+          "branch": null,
+          "revision": "e8334521bf262a8bbcd98dc4498aa1715e5421ff",
+          "version": "2.0.0"
+        }
+      },
+      {
         "package": "JsonFileManager",
         "repositoryURL": "https://github.com/uptech/JsonFileManager.git",
         "state": {

@@ -24,110 +24,33 @@ public final class GitPatchStack {
     }
 
     public func run() throws {
-
-        guard self.arguments.count >= 2 else {
-            throw Error.invalidArgumentCount
-        }
-
-        let subcommand = self.arguments[1]
-        switch subcommand {
-        case "ls":
-            try self.list()
-        case "show":
-            guard self.arguments.count == 3 else {
-                throw Error.invalidArgumentCount
-            }
-
-            if let index = Int(self.arguments[2]) {
-                try self.show(patchIndex: index)
-            } else {
-                print("Usage: git-ps show <patch-index>")
-                print("Note: Run 'git-ps ls' to see the current patches an their index values")
-            }
-        case "pull":
-            try self.pull()
-        case "rebase":
-            try self.rebase()
-        case "rr":
-            let subCommandArgs = self.arguments[2...]
-
-            var explicitBranch: String? = nil
-            var patchIndex: Int? = nil
-
-            var lookingForOptionValue = false
-            var mostRecentlyIdentifiedOption = ""
-            for arg in subCommandArgs {
-                if lookingForOptionValue {
-                    if mostRecentlyIdentifiedOption == "-n" {
-                        explicitBranch = arg
-                        lookingForOptionValue = false
-                    }
-                } else {
-                    if arg == "-n" {
-                        mostRecentlyIdentifiedOption = "-n"
-                        lookingForOptionValue = true
-                    } else {
-                        patchIndex = Int(arg)
-                        mostRecentlyIdentifiedOption = ""
-                        lookingForOptionValue = false
-                    }
-                }
-            }
-
-            if let patchIdx = patchIndex {
-                try self.requestReview(patchIndex: patchIdx, reviewBranchName: explicitBranch)
-            } else {
-                print("Usage: git-ps rr <patch-index> [-n <branch-name>]")
-                print("Note: Run 'git-ps ls' to see the current patches an their index values")
-            }
-        case "pub":
-            let subCommandArgs = self.arguments[2...]
-
-            var explicitBranch: String? = nil
-            var force: Bool = false
-            var keepRemoteBranch: Bool = false
-            var patchIndex: Int? = nil
-
-            var lookingForOptionValue = false
-            var mostRecentlyIdentifiedOption = ""
-            for arg in subCommandArgs {
-                if lookingForOptionValue {
-                    if mostRecentlyIdentifiedOption == "-n" {
-                        explicitBranch = arg
-                        lookingForOptionValue = false
-                    }
-                } else {
-                    if arg == "-f" {
-                        mostRecentlyIdentifiedOption = "-f"
-                        lookingForOptionValue = false
-                        force = true
-                    } else if arg == "-k" {
-                        mostRecentlyIdentifiedOption = "-k"
-                        lookingForOptionValue = false
-                        keepRemoteBranch = true
-                    } else if arg == "-n" {
-                        mostRecentlyIdentifiedOption = "-n"
-                        lookingForOptionValue = true
-                    } else {
-                        patchIndex = Int(arg)
-                        mostRecentlyIdentifiedOption = ""
-                        lookingForOptionValue = false
-                    }
-                }
-            }
-
-            if let patchIdx = patchIndex {
-                try self.publish(patchIndex: patchIdx, force: force, reviewBranchName: explicitBranch, keepRemoteBranch: keepRemoteBranch)
-            } else {
-                print("Usage: git-ps pub [-f] [-k] <patch-index> [-n <branch-name>]")
-                print("Note: Run 'git-ps ls' to see the current patches an their index values")
-            }
-        case "--version":
-            print("v\(VERSION)")
-        case "--help", "-h":
+        guard let cmd = parse(self.arguments) else { showHelpText(); throw Error.invalidArgumentCount }
+        switch cmd {
+        case .help:
             showHelpText()
-        default:
-            print("default")
+        case .version:
+            print("v\(VERSION)")
+        case .subcommand(let subCommand):
+            switch subCommand {
+            case .list:
+                try self.list()
+            case .show(patchIndex: let patchIndex):
+                try self.show(patchIndex: patchIndex)
+            case .pull:
+                try self.pull()
+            case .rebase:
+                try self.rebase()
+            case .requestReview(patchIndex: let patchIndex, options: let options):
+                let branchName = options.compactMap { $0.branchName }.first
+
+                try self.requestReview(patchIndex: patchIndex, reviewBranchName: branchName)
+            case .publish(patchIndex: let patchIndex, options: let options):
+                let force = options.contains(where: { $0 == .force })
+                let keep = options.contains(where: { $0 == .keep })
+                let branchName = options.compactMap { $0.branchName }.first
+
+                try self.publish(patchIndex: patchIndex, force: force, reviewBranchName: branchName, keepRemoteBranch: keep)
+            }
         }
     }
 
