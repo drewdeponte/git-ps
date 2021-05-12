@@ -24,33 +24,37 @@ public final class GitPatchStack {
     }
 
     public func run() throws {
-        guard let cmd = parse(self.arguments) else { showHelpText(); throw Error.invalidArgumentCount }
+        guard let cmd = parseCommand(self.arguments) else { showHelpText(); throw Error.invalidArgumentCount }
         switch cmd {
         case .help:
             showHelpText()
         case .version:
             print("v\(VERSION)")
-        case .subcommand(let subCommand):
-            switch subCommand {
-            case .list:
-                try self.list()
-            case .show(patchIndex: let patchIndex):
-                try self.show(patchIndex: patchIndex)
-            case .pull:
-                try self.pull()
-            case .rebase:
-                try self.rebase()
-            case .requestReview(patchIndex: let patchIndex, options: let options):
-                let branchName = options.compactMap { $0.branchName }.first
+        case .list:
+            try self.list()
+        case .pull:
+            try self.pull()
+        case .rebase:
+            try self.rebase()
+        case .show(args: let args):
+            var vArgs = args
+            guard let patchIndex = showSubcommand.run(&vArgs) else { print(showSubCommandHelpText());  throw Error.invalidArgumentCount }
+            try self.show(patchIndex: patchIndex)
+        case .requestReview(args: let args):
+            var vArgs = args
+            guard let (patchIndex, options) = requestReviewSubcommand.run(&vArgs) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }
+            let branchName = options.compactMap { $0.branchName }.first
 
-                try self.requestReview(patchIndex: patchIndex, reviewBranchName: branchName)
-            case .publish(patchIndex: let patchIndex, options: let options):
-                let force = options.contains(where: { $0 == .force })
-                let keep = options.contains(where: { $0 == .keep })
-                let branchName = options.compactMap { $0.branchName }.first
+            try self.requestReview(patchIndex: patchIndex, reviewBranchName: branchName)
+        case .publish(args: let args):
+            var vArgs = args
+            guard let (patchIndex, options) = publishSubcommand.run(&vArgs) else { print(publishSubCommandHelpText()); throw Error.invalidArgumentCount }
 
-                try self.publish(patchIndex: patchIndex, force: force, reviewBranchName: branchName, keepRemoteBranch: keep)
-            }
+            let force = options.contains(where: { $0 == .force })
+            let keep = options.contains(where: { $0 == .keep })
+            let branchName = options.compactMap { $0.branchName }.first
+
+            try self.publish(patchIndex: patchIndex, force: force, reviewBranchName: branchName, keepRemoteBranch: keep)
         }
     }
 
@@ -523,6 +527,45 @@ public final class GitPatchStack {
             """
         print(text)
     }
+}
+
+func showSubCommandHelpText() -> String {
+    return """
+        usage: git-ps show <patch-index>
+
+        Show the patch diff and details.
+
+    """
+}
+
+func requestReviewSubCommandHelpText() -> String {
+    return """
+        usage: git-ps rr <patch-index> [-n <branch>]
+
+        Request review of the patch or update existing request to review.
+
+        Note: Upon initial request for review of a patch without the
+        `-n <branch>` option will result an a branch name being generated
+        for the review. Alternatively you can specify a branch using the
+        `-n <branch>` option. This is useful when working on teams that have
+        explicit branch naming conventions.
+
+    """
+}
+
+func publishSubCommandHelpText() -> String {
+    return """
+        usage: git-ps pub <patch-index> [-f] [-k] [-n <branch>]
+
+        Publish a patch into upstream's stack base (e.g. origin/main)
+
+                  `-f` - force publish, even if a request for review hasn't happened
+                  `-k` - keep remote branch around, useful when CI systems have problems
+                         with branches being deleted
+         `-n <branch>` - explictly specify the branch name that was used for review,
+                         useful when dealing with explicit branch naming conventions
+    
+    """
 }
 
 extension String {
