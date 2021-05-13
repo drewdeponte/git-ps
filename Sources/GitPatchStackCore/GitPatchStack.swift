@@ -37,18 +37,19 @@ public final class GitPatchStack {
         case .rebase:
             try self.rebase()
         case .show(args: let args):
-            var vArgs = args
-            guard let patchIndex = showSubcommand.run(&vArgs) else { print(showSubCommandHelpText());  throw Error.invalidArgumentCount }
+            guard let (patchIndex, options) = parseShowSubcommand(args) else { print(showSubCommandHelpText());  throw Error.invalidArgumentCount }
+            guard !options.contains(.help) else { print(showSubCommandHelpText());  throw Error.invalidArgumentCount }
             try self.show(patchIndex: patchIndex)
         case .requestReview(args: let args):
-            var vArgs = args
-            guard let (patchIndex, options) = requestReviewSubcommand.run(&vArgs) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }
-            let branchName = options.compactMap { $0.branchName }.first
+            guard let (patchIndex, options) = parseRequestReviewSubcommand(args) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }
+            guard !options.contains(.help) else { print(requestReviewSubCommandHelpText());  throw Error.invalidArgumentCount }
 
+            let branchName = options.compactMap { $0.branchName }.first
+            
             try self.requestReview(patchIndex: patchIndex, reviewBranchName: branchName)
         case .publish(args: let args):
-            var vArgs = args
-            guard let (patchIndex, options) = publishSubcommand.run(&vArgs) else { print(publishSubCommandHelpText()); throw Error.invalidArgumentCount }
+            guard let (patchIndex, options) = parsePublishSubcommand(args) else { print(publishSubCommandHelpText()); throw Error.invalidArgumentCount }
+            guard !options.contains(.help) else { print(publishSubCommandHelpText());  throw Error.invalidArgumentCount }
 
             let force = options.contains(where: { $0 == .force })
             let keep = options.contains(where: { $0 == .keep })
