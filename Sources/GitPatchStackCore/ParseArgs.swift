@@ -79,7 +79,49 @@ enum RequestReviewOption: Equatable {
     }
 }
 
-func parseRequestReviewSubcommand(_ args: ArraySlice<Substring>) -> (patchIndex: Int, options: [RequestReviewOption])? {
+public struct PatchIndexRange { // inclusive
+    let startIndex: Int
+    let endIndex: Int
+
+    var isSingular: Bool {
+        return startIndex == endIndex
+    }
+}
+
+func parseRequestReviewSubcommand(_ args: ArraySlice<Substring>) -> (patchIndexRange: PatchIndexRange, options: [RequestReviewOption])? {
+
+    // git ps rr 5 -n mybranch
+    // git ps rr 5
+    // git ps rr [--help | -h]
+
+    // git ps rr 2-4
+    // git ps rr 2 4
+    // git ps rr <patch-start-index> <patch-end-index>
+
+    // stack:
+    // 4 - something
+    // 3 - orignal something
+    // 2 - ....
+    // 1 - ....
+
+    // git ps rr 3
+
+    // stack:
+    // 5 - something
+    // 4 - fix original something
+    // 3 - orignal something
+    // 2 - ....
+    // 1 - ....
+
+    // stack:
+    // 6 - something
+    // 5 - fix original something
+    // 4 - orignal something
+    // 3 - prefix orignal somethnig
+    // 2 - ....
+    // 1 - ....
+
+    // git ps rr 3-6 [-n <branch-name>]
 
     let requestReviewHelpOption: Parser<ArraySlice<Substring>, RequestReviewOption> = .oneOf(.first("-h"), .first("--help")).map { .help }
 
@@ -93,11 +135,25 @@ func parseRequestReviewSubcommand(_ args: ArraySlice<Substring>) -> (patchIndex:
         requestReviewBranchOption
     ).zeroOrMore()
 
-    let requestReviewSubcommand: Parser<ArraySlice<Substring>, (patchIndex: Int, options: [RequestReviewOption])> = zip(
+    let patchRangeDashSeparated: Parser<ArraySlice<Substring>, PatchIndexRange> = .first(
+        zip(.int(), "-", .int()).map { si, _, ei in PatchIndexRange(startIndex: si, endIndex: ei) }
+    )
+
+    let patchRangeSpaceSeparated: Parser<ArraySlice<Substring>, PatchIndexRange> = zip(
+        patchIndex,patchIndex
+    ).map { si, ei in PatchIndexRange(startIndex: si, endIndex: ei) }
+
+    let patchIndexRange: Parser<ArraySlice<Substring>, PatchIndexRange> = .oneOf(
+        patchRangeDashSeparated,
+        patchRangeSpaceSeparated,
+        patchIndex.map { PatchIndexRange(startIndex: $0, endIndex: $0) }
+    )
+
+    let requestReviewSubcommand: Parser<ArraySlice<Substring>, (patchIndexRange: PatchIndexRange, options: [RequestReviewOption])> = zip(
         requestReviewOptions,
-        patchIndex,
+        patchIndexRange,
         requestReviewOptions
-    ).map { opts1, patchIndex, opts2 in (patchIndex: patchIndex, options: opts1 + opts2) }
+    ).map { opts1, patchIndexRange, opts2 in (patchIndexRange: patchIndexRange, options: opts1 + opts2) }
 
     var vArgs = args
     return requestReviewSubcommand.run(&vArgs)

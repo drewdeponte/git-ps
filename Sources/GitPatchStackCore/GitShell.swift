@@ -472,6 +472,12 @@ public class GitShell {
         return commit
     }
 
+    public func commit(_ ref: String) throws -> Commit? {
+        let commits = try self.commits(fromRef: "\(ref)^", toRef: ref, maxCount: nil)
+        var commitIter = commits.makeIterator()
+        return commitIter.next()
+    }
+
     public func createBranch(named: String, on: String) throws {
         let result = try run(self.path, arguments: ["branch", "-f", "-q", "--no-track", named, on])
         guard result.isSuccessful == true else {
