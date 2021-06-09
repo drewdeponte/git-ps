@@ -798,9 +798,14 @@ func showSubCommandHelpText() -> String {
 
 func requestReviewSubCommandHelpText() -> String {
     return """
-        usage: git-ps rr <patch-index> [-n <branch>]
+        usage: git-ps rr (<patch-index> | <start-patch-index>-<end-patch-index>) [-n <branch>]
 
-        Request review of the patch or update existing request to review.
+        Request review of a patch or update existing request to review using
+        the <patch-index> form.
+
+        Request review of a series of patches or update an existing request
+        to review a series of patches using the
+        <start-patch-index>-<end-patch-index> form.
 
         Note: Upon initial request for review of a patch without the
         `-n <branch>` option will result an a branch name being generated
@@ -808,6 +813,24 @@ func requestReviewSubCommandHelpText() -> String {
         `-n <branch>` option. This is useful when working on teams that have
         explicit branch naming conventions.
 
+        Note: When requesting review of a series of patches there are three
+        different scenarios to be aware of in terms of branch creation or
+        association.
+
+        1. You request review of a series of patches where none of the patches
+           in the series have been association to a branch. In this case
+           a branch will be created and associated to the first patch in
+           the series. However, that branch will contain all the patches in
+           the specificed series.
+        2. You request review of a series of patches where exactly one of the
+           patches has previously been associated to a branch. In this case
+           the branch associated with that patch is used to house the series
+           of patches for review.
+        3. You request review of a series of patches where multiple patches
+           within the series have previously been associated to branches. In
+           this case you are required to explicitly provide a branch name to
+           be used using the -n <branch> option. No associations are recorded
+           between the patches in the series and the branch name specified.
     """
 }
 
