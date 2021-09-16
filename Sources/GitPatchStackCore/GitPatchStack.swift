@@ -94,6 +94,15 @@ public final class GitPatchStack {
         self.git.show(commit: patch.sha)
     }
 
+    public func checkout(patchIndex: Int) throws {
+        guard let patch = try self.getPatch(index: patchIndex) else {
+            print("Error: there is no patch with an index of \(patchIndex)")
+            return
+        }
+
+        try self.git.checkout(ref: patch.sha)
+    }
+
     public func pull() throws {
         guard let dotGitDirURL = try self.git.findDotGit() else {
             print("Error: doesn't seem like you are in a git repository")
