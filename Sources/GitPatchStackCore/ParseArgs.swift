@@ -67,6 +67,21 @@ func parseShowSubcommand(_ args: ArraySlice<Substring>) -> (patchIndex: Int, opt
     return showSubcommand.run(&vArgs)
 }
 
+enum CheckoutOption: Equatable {
+    case help
+}
+
+func parseCheckoutSubcommand(_ args: ArraySlice<Substring>) -> (patchIndex: Int, options: [CheckoutOption])? {
+    let checkoutHelpOption: Parser<ArraySlice<Substring>, CheckoutOption> = .oneOf(.first("-h"), .first("--help")).map { .help }
+
+    let checkoutOptions: Parser<ArraySlice<Substring>, [CheckoutOption]> = .oneOf(checkoutHelpOption).zeroOrMore()
+
+    let checkoutSubcommand: Parser<ArraySlice<Substring>, (patchIndex: Int, options: [CheckoutOption])> = zip(checkoutOptions, patchIndex, checkoutOptions).map { opts1, patchIndex, opts2 in (patchIndex: patchIndex, options: opts1 + opts2) }
+
+    var vArgs = args
+    return checkoutSubcommand.run(&vArgs)
+}
+
 enum RequestReviewOption: Equatable {
     case branch(name: String)
     case help
