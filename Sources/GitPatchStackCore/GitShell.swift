@@ -134,6 +134,7 @@ public class GitShell {
         case gitLogFailure
         case gitFetchFailure
         case gitRebaseFailure
+        case gitGetShowNoColor
         case gitUncommittedChangePresentFailure
         case gitCheckedOutBranchFailure
         case gitCreateAndCheckoutFailure
@@ -208,6 +209,19 @@ public class GitShell {
             return Commits(formattedGitLogOutput: output)
         }
         return Commits(formattedGitLogOutput: "")
+    }
+
+    public func getShowNoColor(ref: String) throws -> String {
+        let result = try run(self.path, arguments: ["show", "--no-color", "--pretty=raw", ref], currentWorkingDirectory: self.currentWorkingDirectory)
+        guard result.isSuccessful == true else {
+            throw Error.gitGetShowNoColor
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitGetShowNoColor
+        }
+
+        return output
     }
 
     public func diffPatch(ref: String) throws -> String {
