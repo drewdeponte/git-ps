@@ -413,7 +413,7 @@ public class GitShell {
     }
 
     public func commitAmendMessages(messages: [String]) throws {
-        var args = ["commit", "--amend"]
+        var args = ["commit", "--amend", "--no-verify"]
         for msg in messages {
             args.append("-m")
             args.append(msg)
