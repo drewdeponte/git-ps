@@ -40,6 +40,11 @@ public final class GitPatchStack {
             guard let (patchIndex, options) = parseShowSubcommand(args) else { print(showSubCommandHelpText());  throw Error.invalidArgumentCount }
             guard !options.contains(.help) else { print(showSubCommandHelpText());  throw Error.invalidArgumentCount }
             try self.show(patchIndex: patchIndex)
+        case .checkout(args: let args):
+            guard let (patchIndex, options) = parseCheckoutSubcommand(args) else { print(checkoutSubCommandHelpText()); throw Error.invalidArgumentCount }
+            guard !options.contains(.help) else { print(checkoutSubCommandHelpText());  throw Error.invalidArgumentCount }
+
+            try self.checkout(patchIndex: patchIndex)
         case .requestReview(args: let args):
             guard let (patchIndexRange, options) = parseRequestReviewSubcommand(args) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }
             guard !options.contains(.help) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }

@@ -12,6 +12,7 @@ enum Command {
     case rebase
     case requestReview(args: ArraySlice<Substring>)
     case publish(args: ArraySlice<Substring>)
+    case checkout(args: ArraySlice<Substring>)
 }
 
 func parseCommand(_ arguments: [String]) -> Command? {
@@ -32,12 +33,14 @@ func parseCommand(_ arguments: [String]) -> Command? {
     let showSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("show"), .everything()).map { _, subCmdArgs in .show(args: subCmdArgs) }
     let requestReviewSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("rr"), .everything()).map { _, subCmdArgs in .requestReview(args: subCmdArgs) }
     let publishSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("pub"), .everything()).map { _, subCmdArgs in .publish(args: subCmdArgs) }
+    let checkoutSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("co"), .everything()).map { _, subCmdArgs in .checkout(args: subCmdArgs) }
 
     let parser: Parser<ArraySlice<Substring>, Command> = zip(.first(.everything()),.oneOf(
         helpCommand,
         versionCommand,
         listSubcommand,
         showSubcommand,
+        checkoutSubcommand,
         pullSubcommand,
         rebaseSubcommand,
         requestReviewSubcommand,
