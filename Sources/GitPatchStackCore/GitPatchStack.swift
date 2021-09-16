@@ -760,6 +760,7 @@ public final class GitPatchStack {
             Commands:
               ls             List the stack of patches
               show <i>       Show the patch diff and details
+              co <i>         Checkout the specified patch in the stack
               pull           Fetch the state of origin/master and rebase the stack of patches onto it
               rebase         Interactive rebase the stack of patches
               rr <i>         Request review of the patch or update existing request to review
@@ -786,6 +787,17 @@ func showSubCommandHelpText() -> String {
         usage: git-ps show <patch-index>
 
         Show the patch diff and details.
+
+    """
+}
+
+func checkoutSubCommandHelpText() -> String {
+    return """
+        usage: git-ps co <patch-index> [-h | --help]
+
+        Checkout the patch identified by the given patch-index. This is
+        useful especially when you want to go headless to ignore some
+        patches higher up in the stack and test something.
 
     """
 }
