@@ -118,20 +118,14 @@ public final class GitPatchStack {
     }
 
     func attempt<A>(_ f: () throws -> A?, onSuccess: ((A) throws -> Void)? = nil, fallback g: () throws -> A) throws -> A {
-        print("Inside the attempt()")
         if let fValue = try f() {
-            print("f() return an fValue")
             if let suc = onSuccess {
-                print("have an onSuccess handler")
                 try suc(fValue)
-                print("executed the onSuccess handler")
                 return fValue
             } else {
-                print("don't have an onSuccess handler")
                 return fValue
             }
         } else {
-            print("f() return nil")
             return try g()
         }
     }
