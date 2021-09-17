@@ -13,6 +13,7 @@ enum Command {
     case requestReview(args: ArraySlice<Substring>)
     case publish(args: ArraySlice<Substring>)
     case checkout(args: ArraySlice<Substring>)
+    case patchHashContent(args: ArraySlice<Substring>)
 }
 
 func parseCommand(_ arguments: [String]) -> Command? {
@@ -34,6 +35,7 @@ func parseCommand(_ arguments: [String]) -> Command? {
     let requestReviewSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("rr"), .everything()).map { _, subCmdArgs in .requestReview(args: subCmdArgs) }
     let publishSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("pub"), .everything()).map { _, subCmdArgs in .publish(args: subCmdArgs) }
     let checkoutSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("co"), .everything()).map { _, subCmdArgs in .checkout(args: subCmdArgs) }
+    let patchHashContentSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("patch-hash-content"), .everything()).map { _, subCmdArgs in .patchHashContent(args: subCmdArgs) }
 
     let parser: Parser<ArraySlice<Substring>, Command> = zip(.first(.everything()),.oneOf(
         helpCommand,
@@ -41,6 +43,7 @@ func parseCommand(_ arguments: [String]) -> Command? {
         listSubcommand,
         showSubcommand,
         checkoutSubcommand,
+        patchHashContentSubcommand,
         pullSubcommand,
         rebaseSubcommand,
         requestReviewSubcommand,

@@ -63,6 +63,12 @@ public final class GitPatchStack {
             guard !options.contains(.help) else { print(checkoutSubCommandHelpText());  throw Error.invalidArgumentCount }
 
             try self.checkout(patchIndex: patchIndex)
+        case .patchHashContent(args: let args):
+            guard let (patchIndex, options) = parsePatchHashContentSubcommand(args) else {
+                print(patchHashContentSubCommandHelpText()); throw Error.invalidArgumentCount }
+            guard !options.contains(.help) else { print(patchHashContentSubCommandHelpText());  throw Error.invalidArgumentCount }
+
+            try self.patchHashContent(patchIndex: patchIndex)
         case .requestReview(args: let args):
             guard let (patchIndexRange, options) = parseRequestReviewSubcommand(args) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }
             guard !options.contains(.help) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }
@@ -726,6 +732,28 @@ public final class GitPatchStack {
             // exit with error
             throw Error.patchConflict
         }
+    }
+
+    private func commitHashContent(ref: String) -> String {
+        let fileCat = try! self.git.getShowNoColor(ref: ref)
+        let fileCatLines = fileCat.split(separator: "\n")
+        let filteredFileCatLines = fileCatLines.filter {
+            $0.starts(with: "commit ") == false &&
+            $0.starts(with: "parent ") == false &&
+            $0.starts(with: "tree ") == false &&
+            $0.starts(with: "index ") == false &&
+            $0.starts(with: "committer ") == false
+        }
+        return filteredFileCatLines.joined(separator: "\n")
+    }
+
+    public func patchHashContent(patchIndex: Int) throws {
+        guard let patch = try self.getPatch(index: patchIndex) else {
+            print("Error: there is no patch with an index of \(patchIndex)")
+            return
+        }
+
+        print(commitHashContent(ref: patch.sha))
     }
 
     private func requestReviewStatus(_ commitSummary: CommitSummary, requestReviewRepository: RequestReviewRepository) throws -> CommitRequestReviewStatus {
