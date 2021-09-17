@@ -85,6 +85,21 @@ func parseCheckoutSubcommand(_ args: ArraySlice<Substring>) -> (patchIndex: Int,
     return checkoutSubcommand.run(&vArgs)
 }
 
+enum PatchHashContentOption: Equatable {
+    case help
+}
+
+func parsePatchHashContentSubcommand(_ args: ArraySlice<Substring>) -> (patchIndex: Int, options: [PatchHashContentOption])? {
+    let patchHashContentHelpOption: Parser<ArraySlice<Substring>, PatchHashContentOption> = .oneOf(.first("-h"), .first("--help")).map { .help }
+
+    let patchHashContentOptions: Parser<ArraySlice<Substring>, [PatchHashContentOption]> = .oneOf(patchHashContentHelpOption).zeroOrMore()
+
+    let patchHashContentSubcommand: Parser<ArraySlice<Substring>, (patchIndex: Int, options: [PatchHashContentOption])> = zip(patchHashContentOptions, patchIndex, patchHashContentOptions).map { opts1, patchIndex, opts2 in (patchIndex: patchIndex, options: opts1 + opts2) }
+
+    var vArgs = args
+    return patchHashContentSubcommand.run(&vArgs)
+}
+
 enum RequestReviewOption: Equatable {
     case branch(name: String)
     case help
