@@ -1,5 +1,23 @@
 import Foundation
 
+import CommonCrypto
+
+extension String {
+    var sha1: String? {
+        guard let data = self.data(using: String.Encoding.utf8) else { return nil }
+
+        let hash = data.withUnsafeBytes { unsafeRawBufferPointer -> [UInt8]? in
+            guard let baseAddr = unsafeRawBufferPointer.baseAddress else { return nil }
+            var hash: [UInt8] = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
+            CC_SHA1(baseAddr, CC_LONG(data.count), &hash)
+            return hash
+        }
+
+        guard let realHash = hash else { return nil }
+        return realHash.map { String(format: "%02x", $0) }.joined()
+    }
+}
+
 public final class GitPatchStack {
     public enum Error: Swift.Error {
         case invalidArgumentCount
