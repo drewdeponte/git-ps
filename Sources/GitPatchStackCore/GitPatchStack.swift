@@ -834,6 +834,18 @@ func checkoutSubCommandHelpText() -> String {
     """
 }
 
+func patchHashContentSubCommandHelpText() -> String {
+    return """
+        usage: git-ps patch-hash-content <patch-index> [-h | --help]
+
+        Output the content that is hashed to determine if changes have
+        been made to a patch since it was last requested review. This
+        is useful for debugging / understanding why rr+ states happen
+        when you might not expect them.
+
+    """
+}
+
 func requestReviewSubCommandHelpText() -> String {
     return """
         usage: git-ps rr (<patch-index> | <start-patch-index>-<end-patch-index>) [-n <branch>]
