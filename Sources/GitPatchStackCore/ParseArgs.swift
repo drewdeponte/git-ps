@@ -13,6 +13,7 @@ enum Command {
     case requestReview(args: ArraySlice<Substring>)
     case publish(args: ArraySlice<Substring>)
     case checkout(args: ArraySlice<Substring>)
+    case patchHashContent(args: ArraySlice<Substring>)
 }
 
 func parseCommand(_ arguments: [String]) -> Command? {
@@ -34,6 +35,7 @@ func parseCommand(_ arguments: [String]) -> Command? {
     let requestReviewSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("rr"), .everything()).map { _, subCmdArgs in .requestReview(args: subCmdArgs) }
     let publishSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("pub"), .everything()).map { _, subCmdArgs in .publish(args: subCmdArgs) }
     let checkoutSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("co"), .everything()).map { _, subCmdArgs in .checkout(args: subCmdArgs) }
+    let patchHashContentSubcommand: Parser<ArraySlice<Substring>, Command> = zip(.first("patch-hash-content"), .everything()).map { _, subCmdArgs in .patchHashContent(args: subCmdArgs) }
 
     let parser: Parser<ArraySlice<Substring>, Command> = zip(.first(.everything()),.oneOf(
         helpCommand,
@@ -41,6 +43,7 @@ func parseCommand(_ arguments: [String]) -> Command? {
         listSubcommand,
         showSubcommand,
         checkoutSubcommand,
+        patchHashContentSubcommand,
         pullSubcommand,
         rebaseSubcommand,
         requestReviewSubcommand,
@@ -83,6 +86,21 @@ func parseCheckoutSubcommand(_ args: ArraySlice<Substring>) -> (patchIndex: Int,
 
     var vArgs = args
     return checkoutSubcommand.run(&vArgs)
+}
+
+enum PatchHashContentOption: Equatable {
+    case help
+}
+
+func parsePatchHashContentSubcommand(_ args: ArraySlice<Substring>) -> (patchIndex: Int, options: [PatchHashContentOption])? {
+    let patchHashContentHelpOption: Parser<ArraySlice<Substring>, PatchHashContentOption> = .oneOf(.first("-h"), .first("--help")).map { .help }
+
+    let patchHashContentOptions: Parser<ArraySlice<Substring>, [PatchHashContentOption]> = .oneOf(patchHashContentHelpOption).zeroOrMore()
+
+    let patchHashContentSubcommand: Parser<ArraySlice<Substring>, (patchIndex: Int, options: [PatchHashContentOption])> = zip(patchHashContentOptions, patchIndex, patchHashContentOptions).map { opts1, patchIndex, opts2 in (patchIndex: patchIndex, options: opts1 + opts2) }
+
+    var vArgs = args
+    return patchHashContentSubcommand.run(&vArgs)
 }
 
 enum RequestReviewOption: Equatable {

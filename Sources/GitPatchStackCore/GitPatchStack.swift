@@ -63,6 +63,12 @@ public final class GitPatchStack {
             guard !options.contains(.help) else { print(checkoutSubCommandHelpText());  throw Error.invalidArgumentCount }
 
             try self.checkout(patchIndex: patchIndex)
+        case .patchHashContent(args: let args):
+            guard let (patchIndex, options) = parsePatchHashContentSubcommand(args) else {
+                print(patchHashContentSubCommandHelpText()); throw Error.invalidArgumentCount }
+            guard !options.contains(.help) else { print(patchHashContentSubCommandHelpText());  throw Error.invalidArgumentCount }
+
+            try self.patchHashContent(patchIndex: patchIndex)
         case .requestReview(args: let args):
             guard let (patchIndexRange, options) = parseRequestReviewSubcommand(args) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }
             guard !options.contains(.help) else { print(requestReviewSubCommandHelpText()); throw Error.invalidArgumentCount }
@@ -728,6 +734,28 @@ public final class GitPatchStack {
         }
     }
 
+    private func commitHashContentFoo(ref: String) -> String {
+        let fileCat = try! self.git.getShowNoColor(ref: ref)
+        let fileCatLines = fileCat.split(separator: "\n")
+        let filteredFileCatLines = fileCatLines.filter {
+            $0.starts(with: "commit ") == false &&
+            $0.starts(with: "parent ") == false &&
+            $0.starts(with: "tree ") == false &&
+            $0.starts(with: "index ") == false &&
+            $0.starts(with: "committer ") == false
+        }
+        return filteredFileCatLines.joined(separator: "\n")
+    }
+
+    public func patchHashContent(patchIndex: Int) throws {
+        guard let patch = try self.getPatch(index: patchIndex) else {
+            print("Error: there is no patch with an index of \(patchIndex)")
+            return
+        }
+
+        print(commitHashContentFoo(ref: patch.sha))
+    }
+
     private func requestReviewStatus(_ commitSummary: CommitSummary, requestReviewRepository: RequestReviewRepository) throws -> CommitRequestReviewStatus {
 
         if let id = try self.getId(patch: commitSummary) {
@@ -830,6 +858,18 @@ func checkoutSubCommandHelpText() -> String {
         Checkout the patch identified by the given patch-index. This is
         useful especially when you want to go headless to ignore some
         patches higher up in the stack and test something.
+
+    """
+}
+
+func patchHashContentSubCommandHelpText() -> String {
+    return """
+        usage: git-ps patch-hash-content <patch-index> [-h | --help]
+
+        Output the content that is hashed to determine if changes have
+        been made to a patch since it was last requested review. This
+        is useful for debugging / understanding why rr+ states happen
+        when you might not expect them.
 
     """
 }
