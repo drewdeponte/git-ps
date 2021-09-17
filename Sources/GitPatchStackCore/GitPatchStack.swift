@@ -265,7 +265,7 @@ public final class GitPatchStack {
             let postAddIdPatchInfo = try getPatchInfo(forRange: patchIndexRange)
             let endPatchInfo = postAddIdPatchInfo.last!
 
-            let record = RequestReviewRecord(patchStackID: startPatchInfo!.patchId, branchName: branchName, commitID: startPatchInfo!.patch.hash, published: false)
+            let record = RequestReviewRecord(patchStackID: startPatchInfo!.patchId, branchName: branchName, commitID: startPatchInfo!.patch.hash, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: startPatchInfo!.patch.hash))
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
@@ -294,7 +294,7 @@ public final class GitPatchStack {
             let matchPatchInfo = patchInfo.first { (patch: Commit, patchId: UUID?) in
                 patchId == requestReviewRecord.patchStackID
             }
-            let record = RequestReviewRecord(patchStackID: requestReviewRecord.patchStackID, branchName: branchName, commitID: matchPatchInfo!.patch.hash, published: false)
+            let record = RequestReviewRecord(patchStackID: requestReviewRecord.patchStackID, branchName: branchName, commitID: matchPatchInfo!.patch.hash, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: matchPatchInfo!.patch.hash))
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
@@ -382,7 +382,7 @@ public final class GitPatchStack {
                 return
             }
 
-            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: false)
+            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: patch.sha))
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
@@ -415,7 +415,7 @@ public final class GitPatchStack {
                 return
             }
 
-            let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: false)
+            let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: newPatch.sha))
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
@@ -497,7 +497,7 @@ public final class GitPatchStack {
 
             try self.git.push(localBranch: rrBranch, upToRemote: upstreamBranch.remote, remoteBranch: upstreamBranch.branch)
 
-            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: true)
+            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: true, locationAgnosticHash: self.getLocationAgnosticHash(ref: patch.sha))
             try rrRepository.record(record)
             print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
@@ -539,7 +539,7 @@ public final class GitPatchStack {
 
                 try self.git.push(localBranch: rrBranch, upToRemote: upstreamBranch.remote, remoteBranch: upstreamBranch.branch)
 
-                let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: true)
+                let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: true, locationAgnosticHash: self.getLocationAgnosticHash(ref: newPatch.sha))
                 try rrRepository.record(record)
                 print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
@@ -746,6 +746,10 @@ public final class GitPatchStack {
         }
         return filteredFileCatLines.joined(separator: "\n")
     }
+    
+    private func getLocationAgnosticHash(ref: String) -> String {
+        return commitHashContent(ref: ref).sha1!
+    }
 
     public func patchHashContent(patchIndex: Int) throws {
         guard let patch = try self.getPatch(index: patchIndex) else {
@@ -765,17 +769,35 @@ public final class GitPatchStack {
                     if published {
                         return .published
                     } else {
+                        if let locationAgnosticHash = record.locationAgnosticHash {
+                            let computedHash = self.getLocationAgnosticHash(ref: commitSummary.sha)
+                            if computedHash == locationAgnosticHash {
+                                return .requestedAndUnchangedSince
+                            } else {
+                                return .requestedAndChangedSince
+                            }
+                        } else {
+                            if record.commitID == commitSummary.sha  {
+                                return .requestedAndUnchangedSince
+                            } else {
+                                return .requestedAndChangedSince
+                            }
+                        }
+                    }
+                } else {
+                    if let locationAgnosticHash = record.locationAgnosticHash {
+                        let computedHash = self.getLocationAgnosticHash(ref: commitSummary.sha)
+                        if computedHash == locationAgnosticHash {
+                            return .requestedAndUnchangedSince
+                        } else {
+                            return .requestedAndChangedSince
+                        }
+                    } else {
                         if record.commitID == commitSummary.sha  {
                             return .requestedAndUnchangedSince
                         } else {
                             return .requestedAndChangedSince
                         }
-                    }
-                } else {
-                    if record.commitID == commitSummary.sha  {
-                        return .requestedAndUnchangedSince
-                    } else {
-                        return .requestedAndChangedSince
                     }
                 }
             } else {

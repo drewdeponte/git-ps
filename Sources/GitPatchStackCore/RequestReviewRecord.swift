@@ -5,4 +5,5 @@ struct RequestReviewRecord: Codable {
     let branchName: String
     let commitID: String
     let published: Bool?
+    let locationAgnosticHash: String?
 }
