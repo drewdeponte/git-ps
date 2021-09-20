@@ -734,7 +734,7 @@ public final class GitPatchStack {
         }
     }
 
-    private func commitHashContentFoo(ref: String) -> String {
+    private func commitHashContent(ref: String) -> String {
         let fileCat = try! self.git.getShowNoColor(ref: ref)
         let fileCatLines = fileCat.split(separator: "\n")
         let filteredFileCatLines = fileCatLines.filter {
@@ -753,7 +753,7 @@ public final class GitPatchStack {
             return
         }
 
-        print(commitHashContentFoo(ref: patch.sha))
+        print(commitHashContent(ref: patch.sha))
     }
 
     private func requestReviewStatus(_ commitSummary: CommitSummary, requestReviewRepository: RequestReviewRepository) throws -> CommitRequestReviewStatus {
