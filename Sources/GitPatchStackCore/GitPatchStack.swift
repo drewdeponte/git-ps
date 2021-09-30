@@ -735,15 +735,9 @@ public final class GitPatchStack {
     }
 
     private func commitHashContent(ref: String) -> String {
-        let fileCat = try! self.git.getShow(ref: ref)
+        let fileCat = try! self.git.getShow(ref: ref, pretty: "tformat:author %an <%ae> %aI%n%n%B", color: false)
         let fileCatLines = fileCat.split(separator: "\n")
-        let filteredFileCatLines = fileCatLines.filter {
-            $0.starts(with: "commit ") == false &&
-            $0.starts(with: "parent ") == false &&
-            $0.starts(with: "tree ") == false &&
-            $0.starts(with: "index ") == false &&
-            $0.starts(with: "committer ") == false
-        }
+        let filteredFileCatLines = fileCatLines.filter { !$0.starts(with: "index ") }
         return filteredFileCatLines.joined(separator: "\n")
     }
     
