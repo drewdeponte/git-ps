@@ -735,7 +735,7 @@ public final class GitPatchStack {
     }
 
     private func commitHashContent(ref: String) -> String {
-        let fileCat = try! self.git.getShowNoColor(ref: ref)
+        let fileCat = try! self.git.getShow(ref: ref)
         let fileCatLines = fileCat.split(separator: "\n")
         let filteredFileCatLines = fileCatLines.filter {
             $0.starts(with: "commit ") == false &&
