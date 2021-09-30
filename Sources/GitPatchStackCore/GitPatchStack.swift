@@ -265,19 +265,29 @@ public final class GitPatchStack {
             let postAddIdPatchInfo = try getPatchInfo(forRange: patchIndexRange)
             let endPatchInfo = postAddIdPatchInfo.last!
 
-            try self.createOrUpdateRequestReviewBranch(named: branchName, fromCommit: startPatchInfo!.patch.parentHash, toCommit: endPatchInfo.patch.hash, fallbackBranchName: originalBranch)
+            do {
+                try self.createOrUpdateRequestReviewBranch(named: branchName, fromCommit: startPatchInfo!.patch.parentHash, toCommit: endPatchInfo.patch.hash, fallbackBranchName: originalBranch)
 
-            // push branch up to remote
-            try self.git.forcePush(branch: branchName, upToRemote: upstreamBranch.remote, displayOutput: true)
-            print("- force pushed \(branchName) up to \(upstreamBranch.remote)")
+                // push branch up to remote
+                try self.git.forcePush(branch: branchName, upToRemote: upstreamBranch.remote, displayOutput: true)
+                print("- force pushed \(branchName) up to \(upstreamBranch.remote)")
 
-            let record = RequestReviewRecord(patchStackID: startPatchInfo!.patchId, branchName: branchName, commitID: startPatchInfo!.patch.hash, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: startPatchInfo!.patch.hash))
-            try rrRepository.record(record)
-            print("- recorded patch id, branch name, and commit sha association in request review state repository")
+                let record = RequestReviewRecord(patchStackID: startPatchInfo!.patchId, branchName: branchName, commitID: startPatchInfo!.patch.hash, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: startPatchInfo!.patch.hash))
+                try rrRepository.record(record)
+                print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
-            // checkout original branch
-            try self.git.checkout(ref: originalBranch)
-            print("- checked out \(originalBranch) so you are where you started")
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+            } catch {
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+                
+                try self.git.deleteBranch(named: branchName)
+                print("- cleaned up \(branchName)")
+                throw error
+            }
         } else if requestReviewRecords.count == 1 { // - exactly one patch is associated with a branch
             let requestReviewRecord = requestReviewRecords.first!
 
@@ -292,35 +302,55 @@ public final class GitPatchStack {
             })
 
             let endPatchInfo = patchInfo.last!
-            try self.createOrUpdateRequestReviewBranch(named: branchName, fromCommit: origStartPatchInfo.patch.parentHash, toCommit: endPatchInfo.patch.hash, fallbackBranchName: originalBranch)
+            do {
+                try self.createOrUpdateRequestReviewBranch(named: branchName, fromCommit: origStartPatchInfo.patch.parentHash, toCommit: endPatchInfo.patch.hash, fallbackBranchName: originalBranch)
 
-            // push branch up to remote
-            try self.git.forcePush(branch: branchName, upToRemote: upstreamBranch.remote, displayOutput: true)
-            print("- force pushed \(branchName) up to \(upstreamBranch.remote)")
+                // push branch up to remote
+                try self.git.forcePush(branch: branchName, upToRemote: upstreamBranch.remote, displayOutput: true)
+                print("- force pushed \(branchName) up to \(upstreamBranch.remote)")
 
-            let matchPatchInfo = patchInfo.first { (patch: Commit, patchId: UUID?) in
-                patchId == requestReviewRecord.patchStackID
+                let matchPatchInfo = patchInfo.first { (patch: Commit, patchId: UUID?) in
+                    patchId == requestReviewRecord.patchStackID
+                }
+                let record = RequestReviewRecord(patchStackID: requestReviewRecord.patchStackID, branchName: branchName, commitID: matchPatchInfo!.patch.hash, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: matchPatchInfo!.patch.hash))
+                try rrRepository.record(record)
+                print("- recorded patch id, branch name, and commit sha association in request review state repository")
+
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+            } catch {
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+                
+                try self.git.deleteBranch(named: branchName)
+                print("- cleaned up \(branchName)")
+                throw error
             }
-            let record = RequestReviewRecord(patchStackID: requestReviewRecord.patchStackID, branchName: branchName, commitID: matchPatchInfo!.patch.hash, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: matchPatchInfo!.patch.hash))
-            try rrRepository.record(record)
-            print("- recorded patch id, branch name, and commit sha association in request review state repository")
-
-            // checkout original branch
-            try self.git.checkout(ref: originalBranch)
-            print("- checked out \(originalBranch) so you are where you started")
         } else { // Multiple patches with previous branch associations - not saving record association
             let branchName = reviewBranchName!
 
             let endPatchInfo = patchInfo.last!
-            try self.createOrUpdateRequestReviewBranch(named: branchName, fromCommit: origStartPatchInfo.patch.parentHash, toCommit: endPatchInfo.patch.hash, fallbackBranchName: originalBranch)
+            do {
+                try self.createOrUpdateRequestReviewBranch(named: branchName, fromCommit: origStartPatchInfo.patch.parentHash, toCommit: endPatchInfo.patch.hash, fallbackBranchName: originalBranch)
 
-            // push branch up to remote
-            try self.git.forcePush(branch: branchName, upToRemote: upstreamBranch.remote, displayOutput: true)
-            print("- force pushed \(branchName) up to \(upstreamBranch.remote)")
+                // push branch up to remote
+                try self.git.forcePush(branch: branchName, upToRemote: upstreamBranch.remote, displayOutput: true)
+                print("- force pushed \(branchName) up to \(upstreamBranch.remote)")
 
-            // checkout original branch
-            try self.git.checkout(ref: originalBranch)
-            print("- checked out \(originalBranch) so you are where you started")
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+            } catch {
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+                
+                try self.git.deleteBranch(named: branchName)
+                print("- cleaned up \(branchName)")
+                throw error
+            }
         }
     }
 
@@ -382,19 +412,29 @@ public final class GitPatchStack {
                 return
             }
 
-            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
+            do {
+                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: patch.sha, fallbackBranchName: originalBranch)
+                
+                // push branch up to remote
+                try self.git.forcePush(branch: rrBranch, upToRemote: upstreamBranch.remote, displayOutput: true)
+                print("- force pushed \(rrBranch) up to \(upstreamBranch.remote)")
 
-            // push branch up to remote
-            try self.git.forcePush(branch: rrBranch, upToRemote: upstreamBranch.remote, displayOutput: true)
-            print("- force pushed \(rrBranch) up to \(upstreamBranch.remote)")
-
-            let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: patch.sha))
-            try rrRepository.record(record)
-            print("- recorded patch id, branch name, and commit sha association in request review state repository")
-
-            // checkout original branch
-            try self.git.checkout(ref: originalBranch)
-            print("- checked out \(originalBranch) so you are where you started")
+                let record = RequestReviewRecord(patchStackID: uuid, branchName: rrBranch, commitID: patch.sha, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: patch.sha))
+                try rrRepository.record(record)
+                print("- recorded patch id, branch name, and commit sha association in request review state repository")
+                
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+            } catch {
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+                
+                try self.git.deleteBranch(named: rrBranch)
+                print("- cleaned up \(rrBranch)")
+                throw error
+            }
         } else {
             print("- failed to parse a patch id out of commit description")
             // add id to commit
@@ -415,19 +455,29 @@ public final class GitPatchStack {
                 return
             }
 
-            try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
+            do {
+                try self.createOrUpdateRequestReviewBranch(named: rrBranch, withCommit: newPatch.sha, fallbackBranchName: originalBranch)
 
-            // push branch up to remote
-            try self.git.forcePush(branch: rrBranch, upToRemote: upstreamBranch.remote, displayOutput: true)
-            print("- force pushed \(rrBranch) up to \(upstreamBranch.remote)")
+                // push branch up to remote
+                try self.git.forcePush(branch: rrBranch, upToRemote: upstreamBranch.remote, displayOutput: true)
+                print("- force pushed \(rrBranch) up to \(upstreamBranch.remote)")
 
-            let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: newPatch.sha))
-            try rrRepository.record(record)
-            print("- recorded patch id, branch name, and commit sha association in request review state repository")
+                let record = RequestReviewRecord(patchStackID: newPatchID, branchName: rrBranch, commitID: newPatch.sha, published: false, locationAgnosticHash: self.getLocationAgnosticHash(ref: newPatch.sha))
+                try rrRepository.record(record)
+                print("- recorded patch id, branch name, and commit sha association in request review state repository")
 
-            // checkout original branch
-            try self.git.checkout(ref: originalBranch)
-            print("- checked out \(originalBranch) so you are where you started")
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+            } catch {
+                // checkout original branch
+                try self.git.checkout(ref: originalBranch)
+                print("- checked out \(originalBranch) so you are where you started")
+                
+                try self.git.deleteBranch(named: rrBranch)
+                print("- cleaned up \(rrBranch)")
+                throw error
+            }
         }
     }
 
