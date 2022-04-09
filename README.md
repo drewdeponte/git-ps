@@ -2,6 +2,10 @@
 
 Git patch stack is an add-on command for Git that facilitates using a patch-stack [Git][] workflow while still using pull requests for peer review. It accomplishes this by managing your stack of patches and behind the scenes creating branches for patches you request review on and pushing them up to origin.
 
+## Project has Moved
+
+This project has been moved to the [git-ps-rs](https://github.com/uptech/git-ps-rs) repository where the rewrite of git-ps in Rust exists as the future of git-ps.
+
 It consists of the following commands:
 
 - `git-ps ls` to list the stack of patches
