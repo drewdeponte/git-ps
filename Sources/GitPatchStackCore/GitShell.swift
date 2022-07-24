@@ -391,12 +391,18 @@ public class GitShell {
     }
 
     public func getConfigBranchRemote(branch: String) throws -> String {
-        let result = try run(self.path, arguments: ["config", "branch\\.\(branch)\\.remote"])
+        let result = try run(self.path, arguments: ["config", "branch.\(branch).remote"])
         guard result.isSuccessful else {
+            print("Standard Error: \(result.standardError)")
+            print("Standard Output: \(result.standardOutput)")
+            print("Exit Code: \(result.terminationStatus)")
             throw Error.gitConfigBranchRemoteFailure
         }
 
         guard let output = result.standardOutput else {
+            print("Standard Error: \(result.standardError)")
+            print("Standard Output: \(result.standardOutput)")
+            print("Exit Code: \(result.terminationStatus)")
             throw Error.gitConfigBranchRemoteFailure
         }
 
@@ -404,12 +410,18 @@ public class GitShell {
     }
 
     public func getConfigRemoteUrl(remote: String) throws -> String {
-        let result = try run(self.path, arguments: ["config", "remote\\.\(remote)\\.url"])
+        let result = try run(self.path, arguments: ["config", "remote.\(remote).url"])
         guard result.isSuccessful else {
+            print("Standard Error: \(result.standardError)")
+            print("Standard Output: \(result.standardOutput)")
+            print("Exit Code: \(result.terminationStatus)")
             throw Error.gitConfigRemoteUrlFailure
         }
 
         guard let output = result.standardOutput else {
+            print("Standard Error: \(result.standardError)")
+            print("Standard Output: \(result.standardOutput)")
+            print("Exit Code: \(result.terminationStatus)")
             throw Error.gitConfigRemoteUrlFailure
         }
 
