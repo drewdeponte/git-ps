@@ -391,8 +391,8 @@ public class GitShell {
     }
 
     public func getConfigBranchRemote(branch: String) throws -> String {
-        let result = try run(self.path, arguments: ["config", "\"branch.\(branch).remote\""])
-        guard result.isSuccessful == true else {
+        let result = try run(self.path, arguments: ["config", "branch\\.\(branch)\\.remote"])
+        guard result.isSuccessful else {
             throw Error.gitConfigBranchRemoteFailure
         }
 
@@ -404,8 +404,8 @@ public class GitShell {
     }
 
     public func getConfigRemoteUrl(remote: String) throws -> String {
-        let result = try run(self.path, arguments: ["config", "\"remote.\(remote).url\""])
-        guard result.isSuccessful == true else {
+        let result = try run(self.path, arguments: ["config", "remote\\.\(remote)\\.url"])
+        guard result.isSuccessful else {
             throw Error.gitConfigRemoteUrlFailure
         }
 
