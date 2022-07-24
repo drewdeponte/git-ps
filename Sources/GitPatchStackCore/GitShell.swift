@@ -140,6 +140,8 @@ public class GitShell {
         case gitCreateAndCheckoutFailure
         case gitCherryPickCommitsFailure
         case gitRevParseFailure
+        case gitConfigBranchRemoteFailure
+        case gitConfigRemoteUrlFailure
         case gitShaOfFailure
         case gitCommitMessageOfFailure
         case gitCommitAmendMessages
@@ -383,6 +385,32 @@ public class GitShell {
 
         guard let output = result.standardOutput else {
             throw Error.gitRevParseFailure
+        }
+
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func getConfigBranchRemote(branch: String) throws -> String {
+        let result = try run(self.path, arguments: ["config", "branch.\(branch).remote"])
+        guard result.isSuccessful == true else {
+            throw Error.gitConfigBranchRemoteFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitConfigBranchRemoteFailure
+        }
+
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func getConfigRemoteUrl(remote: String) throws -> String {
+        let result = try run(self.path, arguments: ["config", "remote.\(remote).url"])
+        guard result.isSuccessful == true else {
+            throw Error.gitConfigRemoteUrlFailure
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.gitConfigRemoteUrlFailure
         }
 
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
