@@ -98,8 +98,12 @@ public struct CommitsIterator: IteratorProtocol {
             if lines.endIndex >= 12 {
                 hasBody = true
             }
-
-            return Commit(hash: lines[0], treeHash: lines[1], parentHash: lines[2], tags: self.extractTags(str: lines[3]), committerDate: dateFormatter.date(from: lines[4])!, committerName: lines[5], committerEmail: lines[6], authorDate: dateFormatter.date(from: lines[7])!, authorName: lines[8], authorEmail: lines[9], summary: lines[10], body: (hasBody ? lines[12..<lines.count].joined(separator: "\n") : nil))
+            
+            if lines.endIndex >= 10 {
+                return Commit(hash: lines[0], treeHash: lines[1], parentHash: lines[2], tags: self.extractTags(str: lines[3]), committerDate: dateFormatter.date(from: lines[4])!, committerName: lines[5], committerEmail: lines[6], authorDate: dateFormatter.date(from: lines[7])!, authorName: lines[8], authorEmail: lines[9], summary: lines[10], body: (hasBody ? lines[12..<lines.count].joined(separator: "\n") : nil))
+            } else {
+                return nil
+            }
         }
     }
 
